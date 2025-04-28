@@ -31,12 +31,72 @@ return function(ReGui, TabsWindow)
     }
 
     local function CreateESP(player)
-        if player == LocalPlayer or ESPObjects[player] then return end
+        if player == LocalPlayer then
+            warn("Skipping ESP creation for LocalPlayer: " .. player.Name)
+            return
+        end
+
+        if not player.Character then
+            warn("No character for player: " .. player.Name)
+            return
+        end
+
+        local shouldDisplay = false
+        if ESPSettings.DisplayMode == "All Players" then
+            shouldDisplay = true
+        elseif ESPSettings.DisplayMode == "Teammates" then
+            shouldDisplay = player.Team == LocalPlayer.Team
+        elseif ESPSettings.DisplayMode == "Enemies" then
+            shouldDisplay = player.Team ~= LocalPlayer.Team
+        end
+
+        if not shouldDisplay then
+            warn("Player " .. player.Name .. " does not match DisplayMode: " .. ESPSettings.DisplayMode)
+            return
+        end
 
         local character = player.Character
-        if not character or not character:FindFirstChild("Humanoid") then return end
+        if not character or not character:FindFirstChild("Humanoid") then
+            warn("No Humanoid for player: " .. player.Name)
+            return
+        end
+
         local humanoid = character.Humanoid
-        if humanoid.Health <= 0 then return end -- Не создаём ESP для мёртвых игроков
+        if humanoid.Health <= 0 then
+            warn("Player " .. player.Name .. " is dead, skipping ESP creation")
+            return
+        end
+
+        -- Удаляем старые ESP-объекты, если они существуют
+        if ESPObjects[player] then
+            warn("Removing old ESP objects for player: " .. player.Name)
+            for key, obj in pairs(ESPObjects[player]) do
+                if key == "Skeleton" then
+                    for _, line in pairs(obj) do
+                        if line then
+                            line:Remove()
+                        end
+                    end
+                elseif key == "Chams" then
+                    if obj then
+                        obj:Destroy()
+                    end
+                elseif key == "Box3D" then
+                    for _, line in pairs(obj.Lines) do
+                        if line then
+                            line:Remove()
+                        end
+                    end
+                elseif key == "HealthBarBackground" or key == "HealthBarFill" or key == "HealthText" then
+                    if obj then
+                        obj:Remove()
+                    end
+                elseif obj then
+                    obj:Remove()
+                end
+            end
+            ESPObjects[player] = nil
+        end
 
         ESPObjects[player] = {
             Box = Drawing.new("Square"),
@@ -48,7 +108,9 @@ return function(ReGui, TabsWindow)
             HealthBarFill = Drawing.new("Line"),
             HealthText = Drawing.new("Text"),
             Skeleton = {},
-            Chams = nil
+            Chams = nil,
+            Character = player.Character,
+            Humanoid = humanoid
         }
 
         for _, obj in pairs(ESPObjects[player]) do
@@ -56,9 +118,24 @@ return function(ReGui, TabsWindow)
                 for i = 1, 12 do
                     obj.Lines[i] = Drawing.new("Line")
                 end
-            elseif obj ~= ESPObjects[player].Skeleton and obj ~= ESPObjects[player].Chams then
+            elseif obj ~= ESPObjects[player].Skeleton and obj ~= ESPObjects[player].Chams and obj ~= ESPObjects[player].Character and obj ~= ESPObjects[player].Humanoid then
                 obj.Visible = false
             end
+        end
+
+        -- Chams
+        if ESPSettings.Chams then
+            ESPObjects[player].Chams = Instance.new("Highlight")
+            ESPObjects[player].Chams.Adornee = player.Character
+            ESPObjects[player].Chams.Parent = player.Character
+            ESPObjects[player].Chams.FillColor = ESPSettings.Colors.Chams
+            ESPObjects[player].Chams.OutlineColor = ESPSettings.Colors.Chams
+            ESPObjects[player].Chams.FillTransparency = 0.5
+            ESPObjects[player].Chams.OutlineTransparency = 0
+            ESPObjects[player].Chams.Enabled = true
+            warn("Created Chams for player: " .. player.Name)
+        else
+            warn("Chams not enabled for player: " .. player.Name)
         end
 
         if player.Character and player.Character:FindFirstChild("Humanoid") then
@@ -82,7 +159,7 @@ return function(ReGui, TabsWindow)
                                     line.Visible = false
                                 end
                             end
-                        elseif obj then
+                        elseif obj and key ~= "Character" and key ~= "Humanoid" then
                             obj.Visible = false
                         end
                     end
@@ -93,11 +170,43 @@ return function(ReGui, TabsWindow)
             end)
             table.insert(Connections, diedConnection)
         end
+        warn("ESP created for player: " .. player.Name)
     end
 
     local function UpdateESP()
         for player, esp in pairs(ESPObjects) do
-            if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") or not player.Character:FindFirstChild("Head") then
+            if not player.Character or not esp.Character or player.Character ~= esp.Character then
+                warn("Character mismatch for player: " .. player.Name .. ", removing ESP")
+                for key, obj in pairs(esp) do
+                    if key == "Skeleton" then
+                        for _, line in pairs(obj) do
+                            if line then
+                                line:Remove()
+                            end
+                        end
+                    elseif key == "Chams" then
+                        if obj then
+                            obj:Destroy()
+                        end
+                    elseif key == "Box3D" then
+                        for _, line in pairs(obj.Lines) do
+                            if line then
+                                line:Remove()
+                            end
+                        end
+                    elseif key == "HealthBarBackground" or key == "HealthBarFill" or key == "HealthText" then
+                        if obj then
+                            obj:Remove()
+                        end
+                    elseif obj and key ~= "Character" and key ~= "Humanoid" then
+                        obj:Remove()
+                    end
+                end
+                ESPObjects[player] = nil
+                continue
+            end
+
+            if not player.Character:FindFirstChild("HumanoidRootPart") or not player.Character:FindFirstChild("Head") then
                 for key, obj in pairs(esp) do
                     if key == "Skeleton" then
                         for _, line in pairs(obj) do
@@ -115,15 +224,15 @@ return function(ReGui, TabsWindow)
                                 line.Visible = false
                             end
                         end
-                    elseif obj then
+                    elseif obj and key ~= "Character" and key ~= "Humanoid" then
                         obj.Visible = false
                     end
                 end
                 continue
             end
 
-            local humanoid = player.Character:FindFirstChild("Humanoid")
-            if not humanoid or humanoid.Health <= 0 then -- Пропускаем мёртвых игроков
+            local humanoid = esp.Humanoid
+            if not humanoid or humanoid.Health <= 0 then
                 for key, obj in pairs(esp) do
                     if key == "Skeleton" then
                         for _, line in pairs(obj) do
@@ -141,7 +250,7 @@ return function(ReGui, TabsWindow)
                                 line.Visible = false
                             end
                         end
-                    elseif obj then
+                    elseif obj and key ~= "Character" and key ~= "Humanoid" then
                         obj.Visible = false
                     end
                 end
@@ -179,7 +288,7 @@ return function(ReGui, TabsWindow)
                                 line.Visible = false
                             end
                         end
-                    elseif obj then
+                    elseif obj and key ~= "Character" and key ~= "Humanoid" then
                         obj.Visible = false
                     end
                 end
@@ -213,7 +322,7 @@ return function(ReGui, TabsWindow)
                                 line.Visible = false
                             end
                         end
-                    elseif obj then
+                    elseif obj and key ~= "Character" and key ~= "Humanoid" then
                         obj.Visible = false
                     end
                 end
@@ -421,29 +530,82 @@ return function(ReGui, TabsWindow)
                 end
             end
 
-            if ESPSettings.Chams then
-                if not esp.Chams then
-                    esp.Chams = Instance.new("Highlight")
-                    esp.Chams.Adornee = player.Character
-                    esp.Chams.Parent = player.Character
-                end
+            if ESPSettings.Chams and esp.Chams then
+                esp.Chams.Enabled = true
+                esp.Chams.Adornee = player.Character
                 esp.Chams.FillColor = ESPSettings.Colors.Chams
                 esp.Chams.OutlineColor = ESPSettings.Colors.Chams
                 esp.Chams.FillTransparency = 0.5
                 esp.Chams.OutlineTransparency = 0
-                esp.Chams.Enabled = true
-            else
-                if esp.Chams then
-                    esp.Chams.Enabled = false
-                end
+            elseif esp.Chams then
+                esp.Chams.Enabled = false
             end
         end
     end
 
-    local function SetupESP()
-        for _, player in pairs(Players:GetPlayers()) do
+    local function SetupESPUpdates()
+        local function onCharacterAdded(player, character)
+            warn("Character added for player: " .. player.Name .. ", creating ESP")
             CreateESP(player)
         end
+
+        local function onPlayerAdded(player)
+            warn("Player added: " .. player.Name)
+            if player.Character then
+                onCharacterAdded(player, player.Character)
+            end
+            player.CharacterAdded:Connect(function(character)
+                onCharacterAdded(player, character)
+            end)
+        end
+
+        local function onPlayerRemoving(player)
+            warn("Player removing: " .. player.Name)
+            if ESPObjects[player] then
+                for key, obj in pairs(ESPObjects[player]) do
+                    if key == "Skeleton" then
+                        for _, line in pairs(obj) do
+                            if line then
+                                line:Remove()
+                            end
+                        end
+                    elseif key == "Chams" then
+                        if obj then
+                            obj:Destroy()
+                        end
+                    elseif key == "Box3D" then
+                        for _, line in pairs(obj.Lines) do
+                            if line then
+                                line:Remove()
+                            end
+                        end
+                    elseif key == "HealthBarBackground" or key == "HealthBarFill" or key == "HealthText" then
+                        if obj then
+                            obj:Remove()
+                        end
+                    elseif obj and key ~= "Character" and key ~= "Humanoid" then
+                        obj:Remove()
+                    end
+                end
+                ESPObjects[player] = nil
+            end
+        end
+
+        for _, player in pairs(Players:GetPlayers()) do
+            onPlayerAdded(player)
+        end
+
+        local playerAddedConnection = Players.PlayerAdded:Connect(onPlayerAdded)
+        local playerRemovingConnection = Players.PlayerRemoving:Connect(onPlayerRemoving)
+
+        table.insert(Connections, playerAddedConnection)
+        table.insert(Connections, playerRemovingConnection)
+    end
+
+    local function SetupESP()
+        SetupESPUpdates()
+        local updateConnection = RunService.RenderStepped:Connect(UpdateESP)
+        table.insert(Connections, updateConnection)
     end
 
     local ESPTab = TabsWindow:CreateTab({Name = "Visual"})
@@ -462,7 +624,11 @@ return function(ReGui, TabsWindow)
         TextColor3 = Color3.fromRGB(0, 0, 0),
         Callback = function(self, state)
             ESPSettings.Enabled = state
-            SetupESP()
+            if state then
+                for _, player in pairs(Players:GetPlayers()) do
+                    CreateESP(player)
+                end
+            end
         end
     })
     ESPTab:Combo({
@@ -474,6 +640,10 @@ return function(ReGui, TabsWindow)
         TextColor3 = Color3.fromRGB(0, 0, 0),
         Callback = function(self, mode)
             ESPSettings.DisplayMode = mode
+            -- Пересоздаём ESP для всех игроков при изменении режима
+            for _, player in pairs(Players:GetPlayers()) do
+                CreateESP(player)
+            end
         end
     })
     ESPTab:Combo({
@@ -535,6 +705,10 @@ return function(ReGui, TabsWindow)
         TextColor3 = Color3.fromRGB(0, 0, 0),
         Callback = function(self, state)
             ESPSettings.Chams = state
+            -- Пересоздаём Chams для всех игроков при изменении настройки
+            for _, player in pairs(Players:GetPlayers()) do
+                CreateESP(player)
+            end
         end
     })
     ESPTab:SliderInt({
@@ -697,51 +871,7 @@ return function(ReGui, TabsWindow)
         end
     })
 
-    local playerAddedConnection = Players.PlayerAdded:Connect(function(player)
-        if ESPSettings.Enabled then
-            CreateESP(player)
-        end
-    end)
-    table.insert(Connections, playerAddedConnection)
-
-    local playerRemovingConnection = Players.PlayerRemoving:Connect(function(player)
-        if ESPObjects[player] then
-            for key, obj in pairs(ESPObjects[player]) do
-                if key == "Skeleton" then
-                    for _, line in pairs(obj) do
-                        if line then
-                            line:Remove()
-                        end
-                    end
-                elseif key == "Chams" then
-                    if obj then
-                        obj:Destroy()
-                    end
-                elseif key == "Box3D" then
-                    for _, line in pairs(obj.Lines) do
-                        if line then
-                            line:Remove()
-                        end
-                    end
-                elseif key == "HealthBarBackground" or key == "HealthBarFill" or key == "HealthText" then
-                    if obj then
-                        obj:Remove()
-                    end
-                elseif obj then
-                    obj:Remove()
-                end
-            end
-            ESPObjects[player] = nil
-        end
-    end)
-    table.insert(Connections, playerRemovingConnection)
-
     SetupESP()
-
-    local updateConnection = RunService.RenderStepped:Connect(function()
-        UpdateESP()
-    end)
-    table.insert(Connections, updateConnection)
 
     game:GetService("CoreGui").ChildRemoved:Connect(function(child)
         if child.Name == "VeryUpHackMenu" then
@@ -772,7 +902,7 @@ return function(ReGui, TabsWindow)
                         if obj then
                             obj:Remove()
                         end
-                    elseif obj then
+                    elseif obj and key ~= "Character" and key ~= "Humanoid" then
                         obj:Remove()
                     end
                 end
