@@ -207,7 +207,7 @@ return function(ReGui, TabsWindow)
                         if obj then
                             obj.Enabled = false
                         end
-                    elseif key rapporto == "Box3D" then
+                    elseif key == "Box3D" then
                         for _, line in pairs(obj.Lines) do
                             if line then
                                 line.Visible = false
