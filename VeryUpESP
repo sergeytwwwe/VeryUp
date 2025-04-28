@@ -33,6 +33,11 @@ return function(ReGui, TabsWindow)
     local function CreateESP(player)
         if player == LocalPlayer or ESPObjects[player] then return end
 
+        local character = player.Character
+        if not character or not character:FindFirstChild("Humanoid") then return end
+        local humanoid = character.Humanoid
+        if humanoid.Health <= 0 then return end -- Не создаём ESP для мёртвых игроков
+
         ESPObjects[player] = {
             Box = Drawing.new("Square"),
             BoxOutline = Drawing.new("Square"),
@@ -57,7 +62,6 @@ return function(ReGui, TabsWindow)
         end
 
         if player.Character and player.Character:FindFirstChild("Humanoid") then
-            local humanoid = player.Character.Humanoid
             local diedConnection
             diedConnection = humanoid.Died:Connect(function()
                 if ESPObjects[player] then
@@ -118,9 +122,34 @@ return function(ReGui, TabsWindow)
                 continue
             end
 
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if not humanoid or humanoid.Health <= 0 then -- Пропускаем мёртвых игроков
+                for key, obj in pairs(esp) do
+                    if key == "Skeleton" then
+                        for _, line in pairs(obj) do
+                            if line then
+                                line.Visible = false
+                            end
+                        end
+                    elseif key == "Chams" then
+                        if obj then
+                            obj.Enabled = false
+                        end
+                    elseif key == "Box3D" then
+                        for _, line in pairs(obj.Lines) do
+                            if line then
+                                line.Visible = false
+                            end
+                        end
+                    elseif obj then
+                        obj.Visible = false
+                    end
+                end
+                continue
+            end
+
             local rootPart = player.Character.HumanoidRootPart
             local head = player.Character.Head
-            local humanoid = player.Character:FindFirstChild("Humanoid")
             local distance = (Camera.CFrame.Position - rootPart.Position).Magnitude
 
             local shouldDisplay = false
@@ -178,7 +207,7 @@ return function(ReGui, TabsWindow)
                         if obj then
                             obj.Enabled = false
                         end
-                    elseif key == "Box3D" then
+                    elseif key rapporto == "Box3D" then
                         for _, line in pairs(obj.Lines) do
                             if line then
                                 line.Visible = false
