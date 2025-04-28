@@ -1,4 +1,4 @@
-return function(ReGui)
+return function(ReGui, TabsWindow)
     local Players = game:GetService("Players")
     local RunService = game:GetService("RunService")
     local CoreGui = game:GetService("CoreGui")
@@ -417,11 +417,6 @@ return function(ReGui)
         end
     end
 
-    local TabsWindow = ReGui:TabsWindow({
-        Title = "Very Up ESP v44",
-        Size = UDim2.fromOffset(400, 300)
-    })
-
     local ESPTab = TabsWindow:CreateTab({Name = "Visual"})
     ESPTab:Label({
         Text = "ESP Settings",
@@ -720,7 +715,7 @@ return function(ReGui)
     table.insert(Connections, updateConnection)
 
     game:GetService("CoreGui").ChildRemoved:Connect(function(child)
-        if child.Name == "VeryUpESP" then
+        if child.Name == "VeryUpHackMenu" then
             for _, connection in pairs(Connections) do
                 if connection then
                     connection:Disconnect()
@@ -756,8 +751,6 @@ return function(ReGui)
             ESPObjects = {}
         end
     end)
-
-    TabsWindow:Show()
 
     warn("Very Up ESP v44 loaded successfully!")
 end
