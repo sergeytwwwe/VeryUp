@@ -8,6 +8,44 @@ return function(ReGui, TabsWindow)
 
     local ESPObjects = {}
     local Connections = {}
+return function(ReGui, VisualTab)
+    -- Проверяем, что VisualTab передан и является корректным объектом
+    if not VisualTab or not VisualTab.Label then
+        warn("Error: Invalid VisualTab provided to ESPModule")
+        return
+    end
+
+    -- Добавляем элементы в уже существующую вкладку VisualTab
+    VisualTab:Label({
+        Text = "ESP Settings",
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextSize = 18,
+        TextColor3 = Color3.fromRGB(0, 0, 0),
+        Font = Enum.Font.FredokaOne
+    })
+    VisualTab:Checkbox({
+        IniFlag = "ESPEnabled",
+        Label = "Enable ESP",
+        Value = false,
+        BackgroundColor3 = Color3.fromRGB(200, 200, 200),
+        TextColor3 = Color3.fromRGB(0, 0, 0),
+        Callback = function(self, state)
+            warn("ESP " .. (state and "enabled" or "disabled"))
+        end
+    })
+    VisualTab:SliderFloat({
+        IniFlag = "ESPTransparency",
+        Label = "ESP Transparency",
+        Value = 0.5,
+        Minimum = 0,
+        Maximum = 1,
+        BackgroundColor3 = Color3.fromRGB(200, 200, 200),
+        TextColor3 = Color3.fromRGB(0, 0, 0),
+        Callback = function(self, value)
+            warn("ESP Transparency set to " .. value)
+        end
+    })
+end
 
     local ESPSettings = {
         Enabled = false,
