@@ -284,12 +284,10 @@ local function updateESP(player)
 		return
 	end
 
-	-- Используем фиксированный размер бокса, основанный на расстоянии до игрока, чтобы избежать "шатания"
+	-- Возвращаем расчёт distanceY на основе позиции головы, но сглаживаем его
 	local headPos = character:FindFirstChild("Head") and character.Head.Position or rootPart.Position
 	local headScreenPos = Camera:WorldToViewportPoint(headPos)
 	local distanceY = math.clamp((Vector2.new(headScreenPos.X, headScreenPos.Y) - Vector2.new(humPos.X, humPos.Y)).Magnitude, 2, math.huge)
-	-- Фиксируем размер бокса, используя среднее значение расстояния от центра до головы
-	local fixedDistanceY = distance * 0.05 -- Масштабируем размер бокса в зависимости от расстояния
 
 	-- Box (2D)
 	if ESPSettings.Box and ESPSettings.BoxType == "2D" then
@@ -301,10 +299,10 @@ local function updateESP(player)
 				objects.Box = NewQuad(ESPSettings.BoxThickness, ESPSettings.BoxColor)
 			end
 			local function setBoxPoints(quad)
-				quad.PointA = Vector2.new(humPos.X + fixedDistanceY, humPos.Y - fixedDistanceY * 2)
-				quad.PointB = Vector2.new(humPos.X - fixedDistanceY, humPos.Y - fixedDistanceY * 2)
-				quad.PointC = Vector2.new(humPos.X - fixedDistanceY, humPos.Y + fixedDistanceY * 2)
-				quad.PointD = Vector2.new(humPos.X + fixedDistanceY, humPos.Y + fixedDistanceY * 2)
+				quad.PointA = Vector2.new(humPos.X + distanceY, humPos.Y - distanceY * 2)
+				quad.PointB = Vector2.new(humPos.X - distanceY, humPos.Y - distanceY * 2)
+				quad.PointC = Vector2.new(humPos.X - distanceY, humPos.Y + distanceY * 2)
+				quad.PointD = Vector2.new(humPos.X + distanceY, humPos.Y + distanceY * 2)
 			end
 			setBoxPoints(objects.Box)
 			objects.Box.Color = ESPSettings.BoxColor
@@ -326,36 +324,34 @@ local function updateESP(player)
 					BottomRightV = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor)
 				}
 			end
-			local cornerLength = fixedDistanceY * 0.4
-			-- Добавляем небольшой нахлёст (overlap), чтобы линии визуально соединялись
-			local overlap = 2 -- Пиксели для нахлёста
-			local topLeft = Vector2.new(humPos.X - fixedDistanceY, humPos.Y - fixedDistanceY * 2)
-			local topRight = Vector2.new(humPos.X + fixedDistanceY, humPos.Y - fixedDistanceY * 2)
-			local bottomLeft = Vector2.new(humPos.X - fixedDistanceY, humPos.Y + fixedDistanceY * 2)
-			local bottomRight = Vector2.new(humPos.X + fixedDistanceY, humPos.Y + fixedDistanceY * 2)
+			local cornerLength = distanceY * 0.4
+			local topLeft = Vector2.new(humPos.X - distanceY, humPos.Y - distanceY * 2)
+			local topRight = Vector2.new(humPos.X + distanceY, humPos.Y - distanceY * 2)
+			local bottomLeft = Vector2.new(humPos.X - distanceY, humPos.Y + distanceY * 2)
+			local bottomRight = Vector2.new(humPos.X + distanceY, humPos.Y + distanceY * 2)
 
 			-- Верхний левый угол
-			objects.BoxCorners.TopLeftH.From = topLeft - Vector2.new(overlap, 0)
+			objects.BoxCorners.TopLeftH.From = topLeft
 			objects.BoxCorners.TopLeftH.To = topLeft + Vector2.new(cornerLength, 0)
-			objects.BoxCorners.TopLeftV.From = topLeft - Vector2.new(0, overlap)
+			objects.BoxCorners.TopLeftV.From = topLeft
 			objects.BoxCorners.TopLeftV.To = topLeft + Vector2.new(0, cornerLength)
 
 			-- Верхний правый угол
-			objects.BoxCorners.TopRightH.From = topRight + Vector2.new(overlap, 0)
+			objects.BoxCorners.TopRightH.From = topRight
 			objects.BoxCorners.TopRightH.To = topRight - Vector2.new(cornerLength, 0)
-			objects.BoxCorners.TopRightV.From = topRight - Vector2.new(0, overlap)
+			objects.BoxCorners.TopRightV.From = topRight
 			objects.BoxCorners.TopRightV.To = topRight + Vector2.new(0, cornerLength)
 
 			-- Нижний левый угол
-			objects.BoxCorners.BottomLeftH.From = bottomLeft - Vector2.new(overlap, 0)
+			objects.BoxCorners.BottomLeftH.From = bottomLeft
 			objects.BoxCorners.BottomLeftH.To = bottomLeft + Vector2.new(cornerLength, 0)
-			objects.BoxCorners.BottomLeftV.From = bottomLeft + Vector2.new(0, overlap)
+			objects.BoxCorners.BottomLeftV.From = bottomLeft
 			objects.BoxCorners.BottomLeftV.To = bottomLeft - Vector2.new(0, cornerLength)
 
 			-- Нижний правый угол
-			objects.BoxCorners.BottomRightH.From = bottomRight + Vector2.new(overlap, 0)
+			objects.BoxCorners.BottomRightH.From = bottomRight
 			objects.BoxCorners.BottomRightH.To = bottomRight - Vector2.new(cornerLength, 0)
-			objects.BoxCorners.BottomRightV.From = bottomRight + Vector2.new(0, overlap)
+			objects.BoxCorners.BottomRightV.From = bottomRight
 			objects.BoxCorners.BottomRightV.To = bottomRight - Vector2.new(0, cornerLength)
 
 			for key, line in pairs(objects.BoxCorners) do
@@ -375,7 +371,7 @@ local function updateESP(player)
 			objects.Name = NewText()
 		end
 		objects.Name.Text = player.Name
-		objects.Name.Position = Vector2.new(humPos.X, humPos.Y - fixedDistanceY * 2 - 20)
+		objects.Name.Position = Vector2.new(humPos.X, humPos.Y - distanceY * 2 - 20)
 		objects.Name.Color = ESPSettings.NameColor
 		objects.Name.Visible = true
 	else
@@ -397,17 +393,17 @@ local function updateESP(player)
 		end
 		local healthPercent = humanoid.Health / humanoid.MaxHealth
 		local healthColor = Color3.fromRGB(255 * (1 - healthPercent), 255 * healthPercent, 0)
-		local d = (Vector2.new(humPos.X - fixedDistanceY, humPos.Y - fixedDistanceY * 2) - Vector2.new(humPos.X - fixedDistanceY, humPos.Y + fixedDistanceY * 2)).Magnitude
+		local d = (Vector2.new(humPos.X - distanceY, humPos.Y - distanceY * 2) - Vector2.new(humPos.X - distanceY, humPos.Y + distanceY * 2)).Magnitude
 		local healthOffset = healthPercent * d
-		objects.HealthBar.From = Vector2.new(humPos.X - fixedDistanceY - 4, humPos.Y + fixedDistanceY * 2)
-		objects.HealthBar.To = Vector2.new(humPos.X - fixedDistanceY - 4, humPos.Y - fixedDistanceY * 2)
+		objects.HealthBar.From = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2)
+		objects.HealthBar.To = Vector2.new(humPos.X - distanceY - 4, humPos.Y - distanceY * 2)
 		objects.HealthBar.Visible = true
-		objects.HealthGreen.From = Vector2.new(humPos.X - fixedDistanceY - 4, humPos.Y + fixedDistanceY * 2)
-		objects.HealthGreen.To = Vector2.new(humPos.X - fixedDistanceY - 4, humPos.Y + fixedDistanceY * 2 - healthOffset)
+		objects.HealthGreen.From = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2)
+		objects.HealthGreen.To = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2 - healthOffset)
 		objects.HealthGreen.Color = healthColor
 		objects.HealthGreen.Visible = true
 		objects.HealthText.Text = tostring(math.floor(humanoid.Health))
-		objects.HealthText.Position = Vector2.new(humPos.X - fixedDistanceY - 4, humPos.Y + fixedDistanceY * 2 + 15)
+		objects.HealthText.Position = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2 + 15)
 		objects.HealthText.Color = ESPSettings.HealthColor
 		objects.HealthText.Visible = true
 	else
@@ -429,7 +425,7 @@ local function updateESP(player)
 		end
 		objects.Distance.Text = math.floor(distance) .. " studs"
 		local offset = ESPSettings.Health and 30 or 15
-		objects.Distance.Position = Vector2.new(humPos.X, humPos.Y + fixedDistanceY * 2 + offset)
+		objects.Distance.Position = Vector2.new(humPos.X, humPos.Y + distanceY * 2 + offset)
 		objects.Distance.Color = ESPSettings.DistanceColor
 		objects.Distance.Visible = true
 	else
