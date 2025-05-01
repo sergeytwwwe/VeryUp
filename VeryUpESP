@@ -74,7 +74,7 @@ local function create3DBoxFill(character)
 	if not humanoidRootPart then return nil end
 
 	-- Определяем размеры персонажа
-	local size = Vector3.new(4, 6, 2) -- Базовый размер
+	local size = Vector3.new(4, 6, 2)
 	local head = character:FindFirstChild("Head")
 	local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
 	local leftLeg = character:FindFirstChild("LeftLowerLeg") or character:FindFirstChild("Left Leg")
@@ -83,11 +83,8 @@ local function create3DBoxFill(character)
 	local rightArm = character:FindFirstChild("RightLowerArm") or character:FindFirstChild("Right Arm")
 
 	if head and torso and leftLeg and rightLeg and leftArm and rightArm then
-		-- Высота: от ног до головы
 		local height = (head.Position.Y - math.min(leftLeg.Position.Y, rightLeg.Position.Y)) + (head.Size.Y / 2)
-		-- Ширина: между руками
 		local width = math.abs(leftArm.Position.X - rightArm.Position.X) + math.max(leftArm.Size.X, rightArm.Size.X)
-		-- Глубина: между передней и задней частью торса
 		local depth = math.abs(torso.Position.Z - humanoidRootPart.Position.Z) * 2 + torso.Size.Z
 		size = Vector3.new(math.max(width, 4), math.max(height, 6), math.max(depth, 2))
 	end
@@ -99,7 +96,6 @@ local function create3DBoxFill(character)
 	box.Transparency = 0.5
 	box.ZIndex = 10
 	box.AlwaysOnTop = true
-	-- Помещаем в специальный контейнер
 	local container = Instance.new("Folder")
 	container.Name = "ESPContainer"
 	container.Parent = game:GetService("CoreGui")
@@ -110,8 +106,7 @@ end
 -- Функция для создания каркасного 3D-бокса (Default)
 local function create3DBoxDefault(character)
 	local lines = {}
-	local size = Vector3.new(4, 6, 2) -- Базовый размер
-	-- Адаптируем размер под персонажа
+	local size = Vector3.new(4, 6, 2)
 	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 	if humanoidRootPart then
 		local head = character:FindFirstChild("Head")
@@ -129,12 +124,10 @@ local function create3DBoxDefault(character)
 		end
 	end
 
-	local halfSize = size / 2
-	-- Создаём линии для рёбер куба (12 рёбер)
 	local edges = {
-		{1, 2}, {2, 3}, {3, 4}, {4, 1}, -- Нижняя грань
-		{5, 6}, {6, 7}, {7, 8}, {8, 5}, -- Верхняя грань
-		{1, 5}, {2, 6}, {3, 7}, {4, 8}  -- Боковые рёбра
+		{1, 2}, {2, 3}, {3, 4}, {4, 1},
+		{5, 6}, {6, 7}, {7, 8}, {8, 5},
+		{1, 5}, {2, 6}, {3, 7}, {4, 8}
 	}
 
 	for i, edge in ipairs(edges) do
@@ -280,18 +273,17 @@ end
 
 -- Обновление ESP для игрока
 local function updateESP(player)
+	-- Скрываем все объекты в начале, чтобы избежать остаточного отображения
+	if ESPObjects[player] then
+		hideAllObjects(ESPObjects[player])
+	end
+
 	if not ESPSettings.Enabled or player == LocalPlayer or (ESPSettings.TeamCheck and player.Team == LocalPlayer.Team) then
-		if ESPObjects[player] then
-			hideAllObjects(ESPObjects[player])
-		end
 		return
 	end
 
 	local character = player.Character
 	if not character or not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild("Humanoid") or character.Humanoid.Health <= 0 then
-		if ESPObjects[player] then
-			hideAllObjects(ESPObjects[player])
-		end
 		return
 	end
 
@@ -300,9 +292,6 @@ local function updateESP(player)
 	local distance = (LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart and (rootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude) or math.huge
 
 	if distance > ESPSettings.MaxDistance then
-		if ESPObjects[player] then
-			hideAllObjects(ESPObjects[player])
-		end
 		return
 	end
 
@@ -312,41 +301,22 @@ local function updateESP(player)
 	local objects = ESPObjects[player]
 
 	local humPos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
-	-- Проверка видимости
 	local screenSize = Camera.ViewportSize
 	local isVisible = onScreen and humPos.X >= 0 and humPos.X <= screenSize.X and humPos.Y >= 0 and humPos.Y <= screenSize.Y and humPos.Z > 0
 
 	if not isVisible then
-		hideAllObjects(objects)
 		return
 	end
 
-	-- Используем фиксированный размер бокса
 	local headPos = character:FindFirstChild("Head") and character.Head.Position or rootPart.Position
 	local headScreenPos = Camera:WorldToViewportPoint(headPos)
 	local distanceY = math.clamp((Vector2.new(headScreenPos.X, headScreenPos.Y) - Vector2.new(humPos.X, humPos.Y)).Magnitude, 2, math.huge)
 
 	-- Box (2D)
 	if ESPSettings.Box and ESPSettings.BoxType == "2D" then
-		-- Скрываем 3D боксы
-		if objects.Box3D then
-			objects.Box3D.Visible = false
-		end
-		if objects.Box3DDefault then
-			for _, line in pairs(objects.Box3DDefault) do
-				line.Visible = false
-			end
-		end
-
 		if ESPSettings.BoxStyle == "Default" then
 			if not objects.Box then
 				objects.Box = NewQuad(ESPSettings.BoxThickness, ESPSettings.BoxColor)
-			end
-			-- Скрываем Modern бокс
-			if objects.BoxCorners then
-				for _, line in pairs(objects.BoxCorners) do
-					line.Visible = false
-				end
 			end
 			local function setBoxPoints(quad)
 				quad.PointA = Vector2.new(humPos.X + distanceY, humPos.Y - distanceY * 2)
@@ -358,10 +328,6 @@ local function updateESP(player)
 			objects.Box.Color = ESPSettings.BoxColor
 			objects.Box.Visible = true
 		elseif ESPSettings.BoxStyle == "Modern" then
-			-- Скрываем Default бокс
-			if objects.Box then
-				objects.Box.Visible = false
-			end
 			if not objects.BoxCorners then
 				objects.BoxCorners = {
 					TopLeftH = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
@@ -381,25 +347,21 @@ local function updateESP(player)
 			local bottomLeft = Vector2.new(humPos.X - distanceY, humPos.Y + distanceY * 2)
 			local bottomRight = Vector2.new(humPos.X + distanceY, humPos.Y + distanceY * 2)
 
-			-- Верхний левый угол
 			objects.BoxCorners.TopLeftH.From = topLeft - Vector2.new(overlap, 0)
 			objects.BoxCorners.TopLeftH.To = topLeft + Vector2.new(cornerLength, 0)
 			objects.BoxCorners.TopLeftV.From = topLeft - Vector2.new(0, overlap)
 			objects.BoxCorners.TopLeftV.To = topLeft + Vector2.new(0, cornerLength)
 
-			-- Верхний правый угол
 			objects.BoxCorners.TopRightH.From = topRight + Vector2.new(overlap, 0)
 			objects.BoxCorners.TopRightH.To = topRight - Vector2.new(cornerLength, 0)
 			objects.BoxCorners.TopRightV.From = topRight - Vector2.new(0, overlap)
 			objects.BoxCorners.TopRightV.To = topRight + Vector2.new(0, cornerLength)
 
-			-- Нижний левый угол
 			objects.BoxCorners.BottomLeftH.From = bottomLeft - Vector2.new(overlap, 0)
 			objects.BoxCorners.BottomLeftH.To = bottomLeft + Vector2.new(cornerLength, 0)
 			objects.BoxCorners.BottomLeftV.From = bottomLeft + Vector2.new(0, overlap)
 			objects.BoxCorners.BottomLeftV.To = bottomLeft - Vector2.new(0, cornerLength)
 
-			-- Нижний правый угол
 			objects.BoxCorners.BottomRightH.From = bottomRight + Vector2.new(overlap, 0)
 			objects.BoxCorners.BottomRightH.To = bottomRight - Vector2.new(cornerLength, 0)
 			objects.BoxCorners.BottomRightV.From = bottomRight + Vector2.new(0, overlap)
@@ -412,22 +374,7 @@ local function updateESP(player)
 			end
 		end
 	elseif ESPSettings.Box and ESPSettings.BoxType == "3D" then
-		-- Скрываем 2D боксы
-		if objects.Box then
-			objects.Box.Visible = false
-		end
-		if objects.BoxCorners then
-			for _, line in pairs(objects.BoxCorners) do
-				line.Visible = false
-			end
-		end
-
 		if ESPSettings.Box3DStyle == "Fill" then
-			if objects.Box3DDefault then
-				for _, line in pairs(objects.Box3DDefault) do
-					line.Visible = false
-				end
-			end
 			if not objects.Box3D then
 				local box, container = create3DBoxFill(character)
 				if box then
@@ -440,9 +387,6 @@ local function updateESP(player)
 				objects.Box3D.Visible = true
 			end
 		else -- Default (только линии)
-			if objects.Box3D then
-				objects.Box3D.Visible = false
-			end
 			if not objects.Box3DDefault or not objects.Box3DSize then
 				local lines, size = create3DBoxDefault(character)
 				objects.Box3DDefault = lines
@@ -452,16 +396,15 @@ local function updateESP(player)
 			local halfSize = size / 2
 			local rootPos = rootPart.Position
 			local rootCFrame = rootPart.CFrame
-			-- Определяем 8 вершин куба
 			local corners = {
-				{ Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, -halfSize.Y, -halfSize.Z)) },
-				{ Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, -halfSize.Y, -halfSize.Z)) },
-				{ Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, -halfSize.Y, halfSize.Z)) },
-				{ Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, -halfSize.Y, halfSize.Z)) },
-				{ Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, halfSize.Y, -halfSize.Z)) },
-				{ Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, halfSize.Y, -halfSize.Z)) },
-				{ Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, halfSize.Y, halfSize.Z)) },
-				{ Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, halfSize.Y, halfSize.Z)) }
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, -halfSize.Y, -halfSize.Z)),
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, -halfSize.Y, -halfSize.Z)),
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, -halfSize.Y, halfSize.Z)),
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, -halfSize.Y, halfSize.Z)),
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, halfSize.Y, -halfSize.Z)),
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, halfSize.Y, -halfSize.Z)),
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, halfSize.Y, halfSize.Z)),
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, halfSize.Y, halfSize.Z))
 			}
 			local edges = {
 				{1, 2}, {2, 3}, {3, 4}, {4, 1},
@@ -469,8 +412,8 @@ local function updateESP(player)
 				{1, 5}, {2, 6}, {3, 7}, {4, 8}
 			}
 			for i, edge in ipairs(edges) do
-				local pos1, vis1 = corners[edge[1]][1][1], corners[edge[1]][1][2]
-				local pos2, vis2 = corners[edge[2]][1][1], corners[edge[2]][1][2]
+				local pos1, vis1 = corners[edge[1]][1], corners[edge[1]][2]
+				local pos2, vis2 = corners[edge[2]][1], corners[edge[2]][2]
 				local line = objects.Box3DDefault["Edge" .. i]
 				if vis1 and vis2 then
 					line.From = Vector2.new(pos1.X, pos1.Y)
@@ -483,9 +426,6 @@ local function updateESP(player)
 				end
 			end
 		end
-	else
-		-- Скрываем все боксы, если Box выключен
-		hideAllObjects(objects)
 	end
 
 	-- Name
