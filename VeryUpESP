@@ -569,16 +569,16 @@ function ESP:Load()
 	end)
 
 	-- Инициализация ESP для существующих игроков
-	for _, player in ipairs(Players:GetPlayers()) do
-		if player ~= LocalPlayer then
-			if player.Character then
-				updateESP(player)
-			end
-			player.CharacterAdded:Connect(function()
-				updateESP(player)
-			end
-		end
-	end)
+       for _, player in ipairs(Players:GetPlayers()) do
+       if player ~= LocalPlayer then
+        if player.Character then
+            updateESP(player)
+        end
+        player.CharacterAdded:Connect(function()
+            updateESP(player)
+        end)
+    end
+end
 
 	-- Интерфейс для вкладки Visual
 	VisualTab:Separator({Text = "ESP Настройки"})
