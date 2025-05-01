@@ -87,7 +87,6 @@ local function create3DBoxDefault(character)
 	local size = Vector3.new(4, 6, 4)
 	local halfSize = size / 2
 
-	-- Определяем 8 вершин куба относительно центра
 	local corners = {
 		Vector3.new(-halfSize.X, -halfSize.Y, -halfSize.Z), -- 1
 		Vector3.new(halfSize.X, -halfSize.Y, -halfSize.Z),  -- 2
@@ -99,7 +98,6 @@ local function create3DBoxDefault(character)
 		Vector3.new(-halfSize.X, halfSize.Y, halfSize.Z)    -- 8
 	}
 
-	-- Создаём линии для рёбер куба (12 рёбер)
 	local edges = {
 		{1, 2}, {2, 3}, {3, 4}, {4, 1}, -- Нижняя грань
 		{5, 6}, {6, 7}, {7, 8}, {8, 5}, -- Верхняя грань
@@ -286,8 +284,12 @@ local function updateESP(player)
 		return
 	end
 
-	local head = Camera:WorldToViewportPoint(character.Head.Position)
-	local distanceY = math.clamp((Vector2.new(head.X, head.Y) - Vector2.new(humPos.X, humPos.Y)).magnitude, 2, math.huge)
+	-- Используем фиксированный размер бокса, основанный на расстоянии до игрока, чтобы избежать "шатания"
+	local headPos = character:FindFirstChild("Head") and character.Head.Position or rootPart.Position
+	local headScreenPos = Camera:WorldToViewportPoint(headPos)
+	local distanceY = math.clamp((Vector2.new(headScreenPos.X, headScreenPos.Y) - Vector2.new(humPos.X, humPos.Y)).Magnitude, 2, math.huge)
+	-- Фиксируем размер бокса, используя среднее значение расстояния от центра до головы
+	local fixedDistanceY = distance * 0.05 -- Масштабируем размер бокса в зависимости от расстояния
 
 	-- Box (2D)
 	if ESPSettings.Box and ESPSettings.BoxType == "2D" then
@@ -299,101 +301,67 @@ local function updateESP(player)
 				objects.Box = NewQuad(ESPSettings.BoxThickness, ESPSettings.BoxColor)
 			end
 			local function setBoxPoints(quad)
-				quad.PointA = Vector2.new(humPos.X + distanceY, humPos.Y - distanceY * 2)
-				quad.PointB = Vector2.new(humPos.X - distanceY, humPos.Y - distanceY * 2)
-				quad.PointC = Vector2.new(humPos.X - distanceY, humPos.Y + distanceY * 2)
-				quad.PointD = Vector2.new(humPos.X + distanceY, humPos.Y + distanceY * 2)
+				quad.PointA = Vector2.new(humPos.X + fixedDistanceY, humPos.Y - fixedDistanceY * 2)
+				quad.PointB = Vector2.new(humPos.X - fixedDistanceY, humPos.Y - fixedDistanceY * 2)
+				quad.PointC = Vector2.new(humPos.X - fixedDistanceY, humPos.Y + fixedDistanceY * 2)
+				quad.PointD = Vector2.new(humPos.X + fixedDistanceY, humPos.Y + fixedDistanceY * 2)
 			end
 			setBoxPoints(objects.Box)
 			objects.Box.Color = ESPSettings.BoxColor
 			objects.Box.Visible = true
 		elseif ESPSettings.BoxStyle == "Modern" then
+			-- Явно скрываем Default Box перед отображением Modern
+			if objects.Box then
+				objects.Box.Visible = false
+			end
 			if not objects.BoxCorners then
 				objects.BoxCorners = {
-					TopLeft1 = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
-					TopLeft2 = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
-					TopRight1 = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
-					TopRight2 = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
-					BottomLeft1 = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
-					BottomLeft2 = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
-					BottomRight1 = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
-					BottomRight2 = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor)
+					TopLeftH = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor), -- Горизонтальная линия
+					TopLeftV = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor), -- Вертикальная линия
+					TopRightH = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
+					TopRightV = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
+					BottomLeftH = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
+					BottomLeftV = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
+					BottomRightH = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
+					BottomRightV = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor)
 				}
 			end
-			local cornerLength = distanceY * 0.4
-			local topLeft = Vector2.new(humPos.X - distanceY, humPos.Y - distanceY * 2)
-			local topRight = Vector2.new(humPos.X + distanceY, humPos.Y - distanceY * 2)
-			local bottomLeft = Vector2.new(humPos.X - distanceY, humPos.Y + distanceY * 2)
-			local bottomRight = Vector2.new(humPos.X + distanceY, humPos.Y + distanceY * 2)
-			objects.BoxCorners.TopLeft1.From = topLeft
-			objects.BoxCorners.TopLeft1.To = topLeft + Vector2.new(cornerLength, 0)
-			objects.BoxCorners.TopLeft2.From = topLeft
-			objects.BoxCorners.TopLeft2.To = topLeft + Vector2.new(0, cornerLength)
-			objects.BoxCorners.TopRight1.From = topRight
-			objects.BoxCorners.TopRight1.To = topRight + Vector2.new(-cornerLength, 0)
-			objects.BoxCorners.TopRight2.From = topRight
-			objects.BoxCorners.TopRight2.To = topRight + Vector2.new(0, cornerLength)
-			objects.BoxCorners.BottomLeft1.From = bottomLeft
-			objects.BoxCorners.BottomLeft1.To = bottomLeft + Vector2.new(cornerLength, 0)
-			objects.BoxCorners.BottomLeft2.From = bottomLeft
-			objects.BoxCorners.BottomLeft2.To = bottomLeft + Vector2.new(0, -cornerLength)
-			objects.BoxCorners.BottomRight1.From = bottomRight
-			objects.BoxCorners.BottomRight1.To = bottomRight + Vector2.new(-cornerLength, 0)
-			objects.BoxCorners.BottomRight2.From = bottomRight
-			objects.BoxCorners.BottomRight2.To = bottomRight + Vector2.new(0, -cornerLength)
+			local cornerLength = fixedDistanceY * 0.4
+			-- Добавляем небольшой нахлёст (overlap), чтобы линии визуально соединялись
+			local overlap = 2 -- Пиксели для нахлёста
+			local topLeft = Vector2.new(humPos.X - fixedDistanceY, humPos.Y - fixedDistanceY * 2)
+			local topRight = Vector2.new(humPos.X + fixedDistanceY, humPos.Y - fixedDistanceY * 2)
+			local bottomLeft = Vector2.new(humPos.X - fixedDistanceY, humPos.Y + fixedDistanceY * 2)
+			local bottomRight = Vector2.new(humPos.X + fixedDistanceY, humPos.Y + fixedDistanceY * 2)
+
+			-- Верхний левый угол
+			objects.BoxCorners.TopLeftH.From = topLeft - Vector2.new(overlap, 0)
+			objects.BoxCorners.TopLeftH.To = topLeft + Vector2.new(cornerLength, 0)
+			objects.BoxCorners.TopLeftV.From = topLeft - Vector2.new(0, overlap)
+			objects.BoxCorners.TopLeftV.To = topLeft + Vector2.new(0, cornerLength)
+
+			-- Верхний правый угол
+			objects.BoxCorners.TopRightH.From = topRight + Vector2.new(overlap, 0)
+			objects.BoxCorners.TopRightH.To = topRight - Vector2.new(cornerLength, 0)
+			objects.BoxCorners.TopRightV.From = topRight - Vector2.new(0, overlap)
+			objects.BoxCorners.TopRightV.To = topRight + Vector2.new(0, cornerLength)
+
+			-- Нижний левый угол
+			objects.BoxCorners.BottomLeftH.From = bottomLeft - Vector2.new(overlap, 0)
+			objects.BoxCorners.BottomLeftH.To = bottomLeft + Vector2.new(cornerLength, 0)
+			objects.BoxCorners.BottomLeftV.From = bottomLeft + Vector2.new(0, overlap)
+			objects.BoxCorners.BottomLeftV.To = bottomLeft - Vector2.new(0, cornerLength)
+
+			-- Нижний правый угол
+			objects.BoxCorners.BottomRightH.From = bottomRight + Vector2.new(overlap, 0)
+			objects.BoxCorners.BottomRightH.To = bottomRight - Vector2.new(cornerLength, 0)
+			objects.BoxCorners.BottomRightV.From = bottomRight + Vector2.new(0, overlap)
+			objects.BoxCorners.BottomRightV.To = bottomRight - Vector2.new(0, cornerLength)
+
 			for key, line in pairs(objects.BoxCorners) do
 				line.Color = ESPSettings.BoxColor
 				line.Thickness = ESPSettings.BoxThickness
 				line.Visible = true
-			end
-		end
-	elseif ESPSettings.Box and ESPSettings.BoxType == "3D" then
-		-- Скрываем 2D боксы
-		hideAllObjects(objects)
-
-		if ESPSettings.Box3DStyle == "Fill" then
-			if not objects.Box3D then
-				objects.Box3D = create3DBoxFill(character)
-			end
-			objects.Box3D.Color3 = ESPSettings.BoxColor
-			objects.Box3D.Visible = true
-		else -- Default (только линии)
-			if not objects.Box3DDefault then
-				objects.Box3DDefault = create3DBoxDefault(character)
-			end
-			local size = Vector3.new(4, 6, 4)
-			local halfSize = size / 2
-			local rootPos = rootPart.Position
-			local rootCFrame = rootPart.CFrame
-			-- Используем CFrame для корректного поворота бокса
-			local corners = {
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, -halfSize.Y, -halfSize.Z)),
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, -halfSize.Y, -halfSize.Z)),
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, -halfSize.Y, halfSize.Z)),
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, -halfSize.Y, halfSize.Z)),
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, halfSize.Y, -halfSize.Z)),
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, halfSize.Y, -halfSize.Z)),
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, halfSize.Y, halfSize.Z)),
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, halfSize.Y, halfSize.Z))
-			}
-			local edges = {
-				{1, 2}, {2, 3}, {3, 4}, {4, 1},
-				{5, 6}, {6, 7}, {7, 8}, {8, 5},
-				{1, 5}, {2, 6}, {3, 7}, {4, 8}
-			}
-			for i, edge in ipairs(edges) do
-				local pos1, vis1 = corners[edge[1]][1], corners[edge[1]][2]
-				local pos2, vis2 = corners[edge[2]][1], corners[edge[2]][2]
-				local line = objects.Box3DDefault["Edge" .. i]
-				if vis1 and vis2 then
-					line.From = Vector2.new(pos1.X, pos1.Y)
-					line.To = Vector2.new(pos2.X, pos2.Y)
-					line.Color = ESPSettings.BoxColor
-					line.Thickness = ESPSettings.BoxThickness
-					line.Visible = true
-				else
-					line.Visible = false
-				end
 			end
 		end
 	else
@@ -407,7 +375,7 @@ local function updateESP(player)
 			objects.Name = NewText()
 		end
 		objects.Name.Text = player.Name
-		objects.Name.Position = Vector2.new(humPos.X, humPos.Y - distanceY * 2 - 20)
+		objects.Name.Position = Vector2.new(humPos.X, humPos.Y - fixedDistanceY * 2 - 20)
 		objects.Name.Color = ESPSettings.NameColor
 		objects.Name.Visible = true
 	else
@@ -429,17 +397,17 @@ local function updateESP(player)
 		end
 		local healthPercent = humanoid.Health / humanoid.MaxHealth
 		local healthColor = Color3.fromRGB(255 * (1 - healthPercent), 255 * healthPercent, 0)
-		local d = (Vector2.new(humPos.X - distanceY, humPos.Y - distanceY * 2) - Vector2.new(humPos.X - distanceY, humPos.Y + distanceY * 2)).magnitude
+		local d = (Vector2.new(humPos.X - fixedDistanceY, humPos.Y - fixedDistanceY * 2) - Vector2.new(humPos.X - fixedDistanceY, humPos.Y + fixedDistanceY * 2)).Magnitude
 		local healthOffset = healthPercent * d
-		objects.HealthBar.From = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2)
-		objects.HealthBar.To = Vector2.new(humPos.X - distanceY - 4, humPos.Y - distanceY * 2)
+		objects.HealthBar.From = Vector2.new(humPos.X - fixedDistanceY - 4, humPos.Y + fixedDistanceY * 2)
+		objects.HealthBar.To = Vector2.new(humPos.X - fixedDistanceY - 4, humPos.Y - fixedDistanceY * 2)
 		objects.HealthBar.Visible = true
-		objects.HealthGreen.From = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2)
-		objects.HealthGreen.To = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2 - healthOffset)
+		objects.HealthGreen.From = Vector2.new(humPos.X - fixedDistanceY - 4, humPos.Y + fixedDistanceY * 2)
+		objects.HealthGreen.To = Vector2.new(humPos.X - fixedDistanceY - 4, humPos.Y + fixedDistanceY * 2 - healthOffset)
 		objects.HealthGreen.Color = healthColor
 		objects.HealthGreen.Visible = true
 		objects.HealthText.Text = tostring(math.floor(humanoid.Health))
-		objects.HealthText.Position = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2 + 15)
+		objects.HealthText.Position = Vector2.new(humPos.X - fixedDistanceY - 4, humPos.Y + fixedDistanceY * 2 + 15)
 		objects.HealthText.Color = ESPSettings.HealthColor
 		objects.HealthText.Visible = true
 	else
@@ -461,7 +429,7 @@ local function updateESP(player)
 		end
 		objects.Distance.Text = math.floor(distance) .. " studs"
 		local offset = ESPSettings.Health and 30 or 15
-		objects.Distance.Position = Vector2.new(humPos.X, humPos.Y + distanceY * 2 + offset)
+		objects.Distance.Position = Vector2.new(humPos.X, humPos.Y + fixedDistanceY * 2 + offset)
 		objects.Distance.Color = ESPSettings.DistanceColor
 		objects.Distance.Visible = true
 	else
