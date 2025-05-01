@@ -273,7 +273,7 @@ end
 
 -- Обновление ESP для игрока
 local function updateESP(player)
-	-- Скрываем все объекты в начале, чтобы избежать остаточного отображения
+	-- Скрываем все объекты в начале
 	if ESPObjects[player] then
 		hideAllObjects(ESPObjects[player])
 	end
@@ -396,16 +396,23 @@ local function updateESP(player)
 			local halfSize = size / 2
 			local rootPos = rootPart.Position
 			local rootCFrame = rootPart.CFrame
-			local corners = {
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, -halfSize.Y, -halfSize.Z)),
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, -halfSize.Y, -halfSize.Z)),
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, -halfSize.Y, halfSize.Z)),
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, -halfSize.Y, halfSize.Z)),
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, halfSize.Y, -halfSize.Z)),
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, halfSize.Y, -halfSize.Z)),
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, halfSize.Y, halfSize.Z)),
-				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, halfSize.Y, halfSize.Z))
+			-- Храним позиции и видимость отдельно
+			local cornerPositions = {
+				(rootCFrame * Vector3.new(-halfSize.X, -halfSize.Y, -halfSize.Z)),
+				(rootCFrame * Vector3.new(halfSize.X, -halfSize.Y, -halfSize.Z)),
+				(rootCFrame * Vector3.new(halfSize.X, -halfSize.Y, halfSize.Z)),
+				(rootCFrame * Vector3.new(-halfSize.X, -halfSize.Y, halfSize.Z)),
+				(rootCFrame * Vector3.new(-halfSize.X, halfSize.Y, -halfSize.Z)),
+				(rootCFrame * Vector3.new(halfSize.X, halfSize.Y, -halfSize.Z)),
+				(rootCFrame * Vector3.new(halfSize.X, halfSize.Y, halfSize.Z)),
+				(rootCFrame * Vector3.new(-halfSize.X, halfSize.Y, halfSize.Z))
 			}
+			-- Преобразуем мировые координаты в экранные
+			local corners = {}
+			for i, pos in ipairs(cornerPositions) do
+				local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
+				corners[i] = { screenPos, onScreen }
+			end
 			local edges = {
 				{1, 2}, {2, 3}, {3, 4}, {4, 1},
 				{5, 6}, {6, 7}, {7, 8}, {8, 5},
