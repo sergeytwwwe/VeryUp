@@ -71,22 +71,36 @@ end
 -- Функция для создания заполненного 3D-бокса (Fill)
 local function create3DBoxFill(character)
 	local box = Instance.new("BoxHandleAdornment")
-	box.Size = Vector3.new(4, 6, 4)
-	box.Adornee = character:FindFirstChild("HumanoidRootPart")
+	-- Устанавливаем размер, чтобы он соответствовал габаритам персонажа
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if not humanoidRootPart then return nil end
+	local head = character:FindFirstChild("Head")
+	local size = Vector3.new(4, 6, 2) -- Размер бокса (ширина, высота, глубина)
+	if head then
+		local height = (head.Position - humanoidRootPart.Position).Magnitude * 2
+		size = Vector3.new(4, height, 2)
+	end
+	box.Size = size
+	box.Adornee = humanoidRootPart
 	box.Color3 = ESPSettings.BoxColor
 	box.Transparency = 0.5
 	box.ZIndex = 10
 	box.AlwaysOnTop = true
-	box.Parent = character
-	return box
+	-- Помещаем в специальный контейнер, чтобы не засорять структуру персонажа
+	local container = Instance.new("Folder")
+	container.Name = "ESPContainer"
+	container.Parent = game:GetService("CoreGui")
+	box.Parent = container
+	return box, container
 end
 
 -- Функция для создания каркасного 3D-бокса (Default)
 local function create3DBoxDefault(character)
 	local lines = {}
-	local size = Vector3.new(4, 6, 4)
+	local size = Vector3.new(4, 6, 2) -- Размер бокса (ширина, высота, глубина)
 	local halfSize = size / 2
 
+	-- Определяем 8 вершин куба относительно центра
 	local corners = {
 		Vector3.new(-halfSize.X, -halfSize.Y, -halfSize.Z), -- 1
 		Vector3.new(halfSize.X, -halfSize.Y, -halfSize.Z),  -- 2
@@ -98,6 +112,7 @@ local function create3DBoxDefault(character)
 		Vector3.new(-halfSize.X, halfSize.Y, halfSize.Z)    -- 8
 	}
 
+	-- Создаём линии для рёбер куба (12 рёбер)
 	local edges = {
 		{1, 2}, {2, 3}, {3, 4}, {4, 1}, -- Нижняя грань
 		{5, 6}, {6, 7}, {7, 8}, {8, 5}, -- Верхняя грань
@@ -177,6 +192,10 @@ local function clearPlayerObjects(player)
 					if subObj then
 						subObj:Remove()
 					end
+				end
+			elseif key == "Box3DContainer" then
+				if obj then
+					obj:Destroy()
 				end
 			elseif typeof(obj) == "Instance" then
 				if obj then
@@ -284,7 +303,7 @@ local function updateESP(player)
 		return
 	end
 
-	-- Возвращаем расчёт distanceY на основе позиции головы, но сглаживаем его
+	-- Используем фиксированный размер бокса, чтобы избежать "шатания"
 	local headPos = character:FindFirstChild("Head") and character.Head.Position or rootPart.Position
 	local headScreenPos = Camera:WorldToViewportPoint(headPos)
 	local distanceY = math.clamp((Vector2.new(headScreenPos.X, headScreenPos.Y) - Vector2.new(humPos.X, humPos.Y)).Magnitude, 2, math.huge)
@@ -314,8 +333,8 @@ local function updateESP(player)
 			end
 			if not objects.BoxCorners then
 				objects.BoxCorners = {
-					TopLeftH = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor), -- Горизонтальная линия
-					TopLeftV = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor), -- Вертикальная линия
+					TopLeftH = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
+					TopLeftV = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
 					TopRightH = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
 					TopRightV = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
 					BottomLeftH = NewLine(ESPSettings.BoxThickness, ESPSettings.BoxColor),
@@ -325,39 +344,96 @@ local function updateESP(player)
 				}
 			end
 			local cornerLength = distanceY * 0.4
+			-- Добавляем небольшой нахлёст для устранения промежутков
+			local overlap = 1 -- Пиксели для нахлёста
 			local topLeft = Vector2.new(humPos.X - distanceY, humPos.Y - distanceY * 2)
 			local topRight = Vector2.new(humPos.X + distanceY, humPos.Y - distanceY * 2)
 			local bottomLeft = Vector2.new(humPos.X - distanceY, humPos.Y + distanceY * 2)
 			local bottomRight = Vector2.new(humPos.X + distanceY, humPos.Y + distanceY * 2)
 
 			-- Верхний левый угол
-			objects.BoxCorners.TopLeftH.From = topLeft
+			objects.BoxCorners.TopLeftH.From = topLeft - Vector2.new(overlap, 0)
 			objects.BoxCorners.TopLeftH.To = topLeft + Vector2.new(cornerLength, 0)
-			objects.BoxCorners.TopLeftV.From = topLeft
+			objects.BoxCorners.TopLeftV.From = topLeft - Vector2.new(0, overlap)
 			objects.BoxCorners.TopLeftV.To = topLeft + Vector2.new(0, cornerLength)
 
 			-- Верхний правый угол
-			objects.BoxCorners.TopRightH.From = topRight
+			objects.BoxCorners.TopRightH.From = topRight + Vector2.new(overlap, 0)
 			objects.BoxCorners.TopRightH.To = topRight - Vector2.new(cornerLength, 0)
-			objects.BoxCorners.TopRightV.From = topRight
+			objects.BoxCorners.TopRightV.From = topRight - Vector2.new(0, overlap)
 			objects.BoxCorners.TopRightV.To = topRight + Vector2.new(0, cornerLength)
 
 			-- Нижний левый угол
-			objects.BoxCorners.BottomLeftH.From = bottomLeft
+			objects.BoxCorners.BottomLeftH.From = bottomLeft - Vector2.new(overlap, 0)
 			objects.BoxCorners.BottomLeftH.To = bottomLeft + Vector2.new(cornerLength, 0)
-			objects.BoxCorners.BottomLeftV.From = bottomLeft
+			objects.BoxCorners.BottomLeftV.From = bottomLeft + Vector2.new(0, overlap)
 			objects.BoxCorners.BottomLeftV.To = bottomLeft - Vector2.new(0, cornerLength)
 
 			-- Нижний правый угол
-			objects.BoxCorners.BottomRightH.From = bottomRight
+			objects.BoxCorners.BottomRightH.From = bottomRight + Vector2.new(overlap, 0)
 			objects.BoxCorners.BottomRightH.To = bottomRight - Vector2.new(cornerLength, 0)
-			objects.BoxCorners.BottomRightV.From = bottomRight
+			objects.BoxCorners.BottomRightV.From = bottomRight + Vector2.new(0, overlap)
 			objects.BoxCorners.BottomRightV.To = bottomRight - Vector2.new(0, cornerLength)
 
 			for key, line in pairs(objects.BoxCorners) do
 				line.Color = ESPSettings.BoxColor
 				line.Thickness = ESPSettings.BoxThickness
 				line.Visible = true
+			end
+		end
+	elseif ESPSettings.Box and ESPSettings.BoxType == "3D" then
+		-- Скрываем 2D боксы
+		hideAllObjects(objects)
+
+		if ESPSettings.Box3DStyle == "Fill" then
+			if not objects.Box3D then
+				local box, container = create3DBoxFill(character)
+				if box then
+					objects.Box3D = box
+					objects.Box3DContainer = container
+				end
+			end
+			if objects.Box3D then
+				objects.Box3D.Color3 = ESPSettings.BoxColor
+				objects.Box3D.Visible = true
+			end
+		else -- Default (только линии)
+			if not objects.Box3DDefault then
+				objects.Box3DDefault = create3DBoxDefault(character)
+			end
+			local size = Vector3.new(4, 6, 2)
+			local halfSize = size / 2
+			local rootPos = rootPart.Position
+			local rootCFrame = rootPart.CFrame
+			-- Используем CFrame для корректного поворота бокса
+			local corners = {
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, -halfSize.Y, -halfSize.Z)),
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, -halfSize.Y, -halfSize.Z)),
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, -halfSize.Y, halfSize.Z)),
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, -halfSize.Y, halfSize.Z)),
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, halfSize.Y, -halfSize.Z)),
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, halfSize.Y, -halfSize.Z)),
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(halfSize.X, halfSize.Y, halfSize.Z)),
+				Camera:WorldToViewportPoint(rootCFrame * Vector3.new(-halfSize.X, halfSize.Y, halfSize.Z))
+			}
+			local edges = {
+				{1, 2}, {2, 3}, {3, 4}, {4, 1},
+				{5, 6}, {6, 7}, {7, 8}, {8, 5},
+				{1, 5}, {2, 6}, {3, 7}, {4, 8}
+			}
+			for i, edge in ipairs(edges) do
+				local pos1, vis1 = corners[edge[1]][1], corners[edge[1]][2]
+				local pos2, vis2 = corners[edge[2]][1], corners[edge[2]][2]
+				local line = objects.Box3DDefault["Edge" .. i]
+				if vis1 and vis2 then
+					line.From = Vector2.new(pos1.X, pos1.Y)
+					line.To = Vector2.new(pos2.X, pos2.Y)
+					line.Color = ESPSettings.BoxColor
+					line.Thickness = ESPSettings.BoxThickness
+					line.Visible = true
+				else
+					line.Visible = false
+				end
 			end
 		end
 	else
