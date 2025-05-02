@@ -296,18 +296,20 @@ local function isVisibleThroughWall(character)
 	local ignoreList = {LocalPlayer.Character, workspace.Terrain}
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player ~= LocalPlayer and player ~= character.Parent then
-			table.insert(ignoreList, player.Character)
+			if player.Character then
+				table.insert(ignoreList, player.Character)
+			end
 		end
 	end
 	for _, point in ipairs(points) do
-		local direction = (point - origin).Unit * ((point - origin).Magnitude + 10)
+		local direction = (point - origin).Unit * ((point - origin).Magnitude + 1)
 		local ray = Ray.new(origin, direction)
 		local part, _ = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList, false, true)
-		if not part or (part and part:IsDescendantOf(character)) then
-			return true
+		if part and not part:IsDescendantOf(character) then
+			return false
 		end
 	end
-	return false
+	return true
 end
 
 -- Обновление ESP для игрока
@@ -363,7 +365,7 @@ local function updateESP(player)
 	end
 
 	local distanceY = math.clamp((Vector2.new(headPos.X, headPos.Y) - Vector2.new(humPos.X, humPos.Y)).Magnitude, 2, math.huge)
-	local isVisibleWall = ESPSettings.VisibleCheck and isVisibleThroughWall(character) or true
+	local isVisibleWall = isVisibleThroughWall(character)
 
 	-- Box (2D)
 	if ESPSettings.Box and ESPSettings.BoxType == "2D" then
@@ -379,10 +381,10 @@ local function updateESP(player)
 			end
 			setBoxPoints(objects.Box)
 			if ESPSettings.VisibilityStyle == "Smart" then
-				objects.Box.Visible = true -- Smart работает всегда
+				objects.Box.Visible = true
 				objects.Box.Color = ESPSettings.BoxColor
 			else -- Default
-				objects.Box.Visible = ESPSettings.VisibleCheck and isVisibleWall -- Default работает только с VisibleCheck
+				objects.Box.Visible = ESPSettings.VisibleCheck and isVisibleWall
 				objects.Box.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
 			end
 		elseif ESPSettings.BoxStyle == "Modern" then
@@ -428,10 +430,10 @@ local function updateESP(player)
 			for key, line in pairs(objects.BoxCorners) do
 				line.Thickness = ESPSettings.BoxThickness
 				if ESPSettings.VisibilityStyle == "Smart" then
-					line.Visible = true -- Smart работает всегда
+					line.Visible = true
 					line.Color = ESPSettings.BoxColor
 				else -- Default
-					line.Visible = ESPSettings.VisibleCheck and isVisibleWall -- Default работает только с VisibleCheck
+					line.Visible = ESPSettings.VisibleCheck and isVisibleWall
 					line.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
 				end
 			end
@@ -447,10 +449,10 @@ local function updateESP(player)
 			end
 			if objects.Box3D then
 				if ESPSettings.VisibilityStyle == "Smart" then
-					objects.Box3D.Visible = true -- Smart работает всегда
+					objects.Box3D.Visible = true
 					objects.Box3D.Color3 = ESPSettings.BoxColor
 				else -- Default
-					objects.Box3D.Visible = ESPSettings.VisibleCheck and isVisibleWall -- Default работает только с VisibleCheck
+					objects.Box3D.Visible = ESPSettings.VisibleCheck and isVisibleWall
 					objects.Box3D.Color3 = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
 				end
 			end
@@ -493,10 +495,10 @@ local function updateESP(player)
 					line.To = Vector2.new(pos2.X, pos2.Y)
 					line.Thickness = ESPSettings.BoxThickness
 					if ESPSettings.VisibilityStyle == "Smart" then
-						line.Visible = true -- Smart работает всегда
+						line.Visible = true
 						line.Color = ESPSettings.BoxColor
 					else -- Default
-						line.Visible = ESPSettings.VisibleCheck and isVisibleWall -- Default работает только с VisibleCheck
+						line.Visible = ESPSettings.VisibleCheck and isVisibleWall
 						line.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
 					end
 				else
@@ -651,12 +653,12 @@ local function updateESP(player)
 		end
 	end
 
-	-- Visible Check (круг отображается только при включённом VisibleCheck, с масштабированием)
-	if ESPSettings.VisibleCheck then
+	-- Visible Check (круг отображается только при Smart и VisibleCheck)
+	if ESPSettings.VisibleCheck and ESPSettings.VisibilityStyle == "Smart" then
 		if not objects.Eye then
 			objects.Eye = NewEye()
 		end
-		local eyeRadius = math.max(5, 10 * (1 - (distance / ESPSettings.MaxDistance))) -- Уменьшаем радиус с расстоянием
+		local eyeRadius = math.max(5, 10 * (1 - (distance / ESPSettings.MaxDistance)))
 		objects.Eye.Radius = eyeRadius
 		objects.Eye.Position = Vector2.new(humPos.X, humPos.Y - distanceY * 2 - 40 - eyeRadius)
 		objects.Eye.Color = isVisibleWall and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
