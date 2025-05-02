@@ -383,8 +383,11 @@ local function updateESP(player)
 			if ESPSettings.VisibilityStyle == "Smart" then
 				objects.Box.Visible = true
 				objects.Box.Color = ESPSettings.BoxColor
-			else -- Default
-				objects.Box.Visible = ESPSettings.VisibleCheck and isVisibleWall
+			elseif ESPSettings.VisibilityStyle == "Default" then
+				objects.Box.Visible = true -- Работает всегда
+				objects.Box.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
+			elseif ESPSettings.VisibilityStyle == "VisibleOnly" then
+				objects.Box.Visible = isVisibleWall
 				objects.Box.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
 			end
 		elseif ESPSettings.BoxStyle == "Modern" then
@@ -432,8 +435,11 @@ local function updateESP(player)
 				if ESPSettings.VisibilityStyle == "Smart" then
 					line.Visible = true
 					line.Color = ESPSettings.BoxColor
-				else -- Default
-					line.Visible = ESPSettings.VisibleCheck and isVisibleWall
+				elseif ESPSettings.VisibilityStyle == "Default" then
+					line.Visible = true
+					line.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
+				elseif ESPSettings.VisibilityStyle == "VisibleOnly" then
+					line.Visible = isVisibleWall
 					line.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
 				end
 			end
@@ -451,8 +457,11 @@ local function updateESP(player)
 				if ESPSettings.VisibilityStyle == "Smart" then
 					objects.Box3D.Visible = true
 					objects.Box3D.Color3 = ESPSettings.BoxColor
-				else -- Default
-					objects.Box3D.Visible = ESPSettings.VisibleCheck and isVisibleWall
+				elseif ESPSettings.VisibilityStyle == "Default" then
+					objects.Box3D.Visible = true
+					objects.Box3D.Color3 = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
+				elseif ESPSettings.VisibilityStyle == "VisibleOnly" then
+					objects.Box3D.Visible = isVisibleWall
 					objects.Box3D.Color3 = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
 				end
 			end
@@ -497,8 +506,11 @@ local function updateESP(player)
 					if ESPSettings.VisibilityStyle == "Smart" then
 						line.Visible = true
 						line.Color = ESPSettings.BoxColor
-					else -- Default
-						line.Visible = ESPSettings.VisibleCheck and isVisibleWall
+					elseif ESPSettings.VisibilityStyle == "Default" then
+						line.Visible = true
+						line.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
+					elseif ESPSettings.VisibilityStyle == "VisibleOnly" then
+						line.Visible = isVisibleWall
 						line.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
 					end
 				else
@@ -713,9 +725,6 @@ function ESP:Load()
 		Callback = function(self, value)
 			ESPSettings.Enabled = value
 			for _, player in ipairs(Players:GetPlayers()) do
-				if ESPObjects[player] then
-					hideAllObjects(ESPObjects[player])
-				end
 				updateESP(player)
 			end
 		end
@@ -728,9 +737,6 @@ function ESP:Load()
 		Callback = function(self, value)
 			ESPSettings.Box = value
 			for _, player in ipairs(Players:GetPlayers()) do
-				if ESPObjects[player] then
-					hideAllObjects(ESPObjects[player])
-				end
 				updateESP(player)
 			end
 		end
@@ -744,9 +750,6 @@ function ESP:Load()
 		Callback = function(self, value)
 			ESPSettings.BoxType = value
 			for _, player in ipairs(Players:GetPlayers()) do
-				if ESPObjects[player] then
-					hideAllObjects(ESPObjects[player])
-				end
 				updateESP(player)
 			end
 		end
@@ -760,9 +763,6 @@ function ESP:Load()
 		Callback = function(self, value)
 			ESPSettings.BoxStyle = value
 			for _, player in ipairs(Players:GetPlayers()) do
-				if ESPObjects[player] then
-					hideAllObjects(ESPObjects[player])
-				end
 				updateESP(player)
 			end
 		end
@@ -776,9 +776,6 @@ function ESP:Load()
 		Callback = function(self, value)
 			ESPSettings.Box3DStyle = value
 			for _, player in ipairs(Players:GetPlayers()) do
-				if ESPObjects[player] then
-					hideAllObjects(ESPObjects[player])
-				end
 				updateESP(player)
 			end
 		end
@@ -797,9 +794,6 @@ function ESP:Load()
 		Callback = function(self, value)
 			ESPSettings.VisibilityMode = value
 			for _, player in ipairs(Players:GetPlayers()) do
-				if ESPObjects[player] then
-					hideAllObjects(ESPObjects[player])
-				end
 				updateESP(player)
 			end
 		end
@@ -821,14 +815,10 @@ function ESP:Load()
 		IniFlag = "ESP_VisibilityStyle",
 		Label = "Visibility Style",
 		Selected = ESPSettings.VisibilityStyle,
-		Items = {"Smart", "Default"},
+		Items = {"Smart", "Default", "VisibleOnly"},
 		Callback = function(self, value)
 			ESPSettings.VisibilityStyle = value
 			for _, player in ipairs(Players:GetPlayers()) do
-				if ESPObjects[player] then
-					hideAllObjects(ESPObjects[player]) -- Полное скрытие перед обновлением
-					clearPlayerObjects(player) -- Очистка всех объектов
-				end
 				updateESP(player)
 			end
 		end
@@ -847,7 +837,7 @@ function ESP:Load()
 	})
 
 	RunService.Heartbeat:Connect(function()
-		VisibilityColorInput.Visible = ESPSettings.VisibilityStyle == "Default" and ESPSettings.Box
+		VisibilityColorInput.Visible = (ESPSettings.VisibilityStyle == "Default" or ESPSettings.VisibilityStyle == "VisibleOnly") and ESPSettings.Box
 	end)
 
 	VisualTab:Checkbox({
