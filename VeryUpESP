@@ -291,7 +291,7 @@ local function isVisibleThroughWall(character)
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
 	local origin = Camera.CFrame.Position
 	local target = character.HumanoidRootPart.Position
-	local direction = (target - origin).Unit * (target - origin).Magnitude + 10 -- Добавляем небольшой буфер
+	local direction = (target - origin).Unit * ((target - origin).Magnitude + 10) -- Исправлено сложение
 	local ray = Ray.new(origin, direction)
 	local ignoreList = {LocalPlayer.Character, character, workspace.Terrain}
 	local part, _ = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList, false, true)
