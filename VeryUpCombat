@@ -230,29 +230,30 @@ end
 
 -- Обновление Gun Mods для игрока
 local function updateGunMods()
-    local character = LocalPlayer.Character
-    if not character then return end
-
-    local weapon = character:FindFirstChildOfClass("Tool")
-    if not weapon then return end
+    local playerData = LocalPlayer:FindFirstChild("PlayerLocalData")
+    if not playerData then return end
 
     -- Infinite Ammo
     if GunModsSettings.InfAmmo then
-        local ammo = weapon:FindFirstChild("Ammo")
-        local clipAmmo = weapon:FindFirstChild("ClipAmmo")
-        if ammo and ammo:IsA("IntValue") then
-            ammo.Value = math.max(ammo.Value, 9999) -- Устанавливаем минимум 9999
+        local ammoPrimary = playerData:FindFirstChild("ammoPrimary")
+        local ammoSecondary = playerData:FindFirstChild("ammoSecondary")
+        if ammoPrimary and ammoPrimary:IsA("IntValue") then
+            ammoPrimary.Value = 999999
         end
-        if clipAmmo and clipAmmo:IsA("IntValue") then
-            clipAmmo.Value = math.max(clipAmmo.Value, 9999)
+        if ammoSecondary and ammoSecondary:IsA("IntValue") then
+            ammoSecondary.Value = 999999
         end
     end
 
     -- No Reload
     if GunModsSettings.NoReload then
-        local reloadTime = weapon:FindFirstChild("ReloadTime")
-        if reloadTime and reloadTime:IsA("NumberValue") then
-            reloadTime.Value = 0 -- Отключаем время перезарядки
+        local ammoLoadPrimary = playerData:FindFirstChild("ammoLoadPrimary")
+        local ammoLoadSecondary = playerData:FindFirstChild("ammoLoadSecondary")
+        if ammoLoadPrimary and ammoLoadPrimary:IsA("IntValue") then
+            ammoLoadPrimary.Value = 999999
+        end
+        if ammoLoadSecondary and ammoLoadSecondary:IsA("IntValue") then
+            ammoLoadSecondary.Value = 999999
         end
     end
 end
