@@ -366,12 +366,11 @@ local function updateESP(player)
 				quad.PointD = Vector2.new(humPos.X + distanceY, humPos.Y + distanceY * 2)
 			end
 			setBoxPoints(objects.Box)
+			objects.Box.Visible = true -- Бокс всегда виден
 			if ESPSettings.VisibilityStyle == "Smart" then
-				objects.Box.Color = ESPSettings.BoxColor
-				objects.Box.Visible = isVisibleWall -- Отображаем бокс только если игрок видим
+				objects.Box.Color = isVisibleWall and ESPSettings.BoxColor or Color3.fromRGB(100, 100, 100) -- Серый для невидимых
 			else -- Default
 				objects.Box.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
-				objects.Box.Visible = true -- В Default бокс всегда виден
 			end
 		elseif ESPSettings.BoxStyle == "Modern" then
 			if not objects.BoxCorners then
@@ -413,18 +412,13 @@ local function updateESP(player)
 			objects.BoxCorners.BottomRightV.From = bottomRight + Vector2.new(0, overlap)
 			objects.BoxCorners.BottomRightV.To = bottomRight - Vector2.new(0, cornerLength)
 
-			if ESPSettings.VisibilityStyle == "Smart" then
-				for key, line in pairs(objects.BoxCorners) do
-					line.Color = ESPSettings.BoxColor
-					line.Thickness = ESPSettings.BoxThickness
-					line.Visible = isVisibleWall -- Отображаем углы только если игрок видим
-				end
-			else -- Default
-				local color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
-				for key, line in pairs(objects.BoxCorners) do
-					line.Color = color
-					line.Thickness = ESPSettings.BoxThickness
-					line.Visible = true -- В Default углы всегда видны
+			for key, line in pairs(objects.BoxCorners) do
+				line.Thickness = ESPSettings.BoxThickness
+				line.Visible = true -- Углы всегда видны
+				if ESPSettings.VisibilityStyle == "Smart" then
+					line.Color = isVisibleWall and ESPSettings.BoxColor or Color3.fromRGB(100, 100, 100) -- Серый для невидимых
+				else -- Default
+					line.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
 				end
 			end
 		end
@@ -438,8 +432,12 @@ local function updateESP(player)
 				end
 			end
 			if objects.Box3D then
-				objects.Box3D.Color3 = ESPSettings.VisibilityStyle == "Smart" and ESPSettings.BoxColor or (isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor)
-				objects.Box3D.Visible = ESPSettings.VisibilityStyle == "Smart" and isVisibleWall or true
+				objects.Box3D.Visible = true -- Бокс всегда виден
+				if ESPSettings.VisibilityStyle == "Smart" then
+					objects.Box3D.Color3 = isVisibleWall and ESPSettings.BoxColor or Color3.fromRGB(100, 100, 100) -- Серый для невидимых
+				else -- Default
+					objects.Box3D.Color3 = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
+				end
 			end
 		else -- Default (только линии)
 			if not objects.Box3DDefault or not objects.Box3DSize then
@@ -478,9 +476,13 @@ local function updateESP(player)
 				if vis1 and vis2 then
 					line.From = Vector2.new(pos1.X, pos1.Y)
 					line.To = Vector2.new(pos2.X, pos2.Y)
-					line.Color = ESPSettings.VisibilityStyle == "Smart" and ESPSettings.BoxColor or (isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor)
 					line.Thickness = ESPSettings.BoxThickness
-					line.Visible = ESPSettings.VisibilityStyle == "Smart" and isVisibleWall or true
+					line.Visible = true -- Линии всегда видны
+					if ESPSettings.VisibilityStyle == "Smart" then
+						line.Color = isVisibleWall and ESPSettings.BoxColor or Color3.fromRGB(100, 100, 100) -- Серый для невидимых
+					else -- Default
+						line.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
+					end
 				else
 					line.Visible = false
 				end
