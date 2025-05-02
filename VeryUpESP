@@ -276,6 +276,8 @@ local function updateESP(player)
 	-- Скрываем все объекты в начале
 	if ESPObjects[player] then
 		hideAllObjects(ESPObjects[player])
+	else
+		ESPObjects[player] = {}
 	end
 
 	if not ESPSettings.Enabled or player == LocalPlayer or (ESPSettings.TeamCheck and player.Team == LocalPlayer.Team) then
@@ -295,13 +297,11 @@ local function updateESP(player)
 		return
 	end
 
-	if not ESPObjects[player] then
-		ESPObjects[player] = {}
-	end
 	local objects = ESPObjects[player]
 
 	local humPos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
 	local screenSize = Camera.ViewportSize
+	-- Более строгая проверка видимости
 	local isVisible = onScreen and humPos.X >= 0 and humPos.X <= screenSize.X and humPos.Y >= 0 and humPos.Y <= screenSize.Y and humPos.Z > 0
 
 	if not isVisible then
@@ -309,7 +309,12 @@ local function updateESP(player)
 	end
 
 	local headPos = character:FindFirstChild("Head") and character.Head.Position or rootPart.Position
-	local headScreenPos = Camera:WorldToViewportPoint(headPos)
+	local headScreenPos, headOnScreen = Camera:WorldToViewportPoint(headPos)
+	-- Проверяем, видима ли голова
+	if not headOnScreen then
+		return
+	end
+
 	local distanceY = math.clamp((Vector2.new(headScreenPos.X, headScreenPos.Y) - Vector2.new(humPos.X, humPos.Y)).Magnitude, 2, math.huge)
 
 	-- Box (2D)
@@ -396,7 +401,6 @@ local function updateESP(player)
 			local halfSize = size / 2
 			local rootPos = rootPart.Position
 			local rootCFrame = rootPart.CFrame
-			-- Храним позиции и видимость отдельно
 			local cornerPositions = {
 				(rootCFrame * Vector3.new(-halfSize.X, -halfSize.Y, -halfSize.Z)),
 				(rootCFrame * Vector3.new(halfSize.X, -halfSize.Y, -halfSize.Z)),
@@ -407,7 +411,6 @@ local function updateESP(player)
 				(rootCFrame * Vector3.new(halfSize.X, halfSize.Y, halfSize.Z)),
 				(rootCFrame * Vector3.new(-halfSize.X, halfSize.Y, halfSize.Z))
 			}
-			-- Преобразуем мировые координаты в экранные
 			local corners = {}
 			for i, pos in ipairs(cornerPositions) do
 				local screenPos, onScreen = Camera:WorldToViewportPoint(pos)
@@ -624,6 +627,9 @@ function ESP:Load()
 		Callback = function(self, value)
 			ESPSettings.Enabled = value
 			for _, player in ipairs(Players:GetPlayers()) do
+				if ESPObjects[player] then
+					hideAllObjects(ESPObjects[player])
+				end
 				updateESP(player)
 			end
 		end
@@ -636,6 +642,9 @@ function ESP:Load()
 		Callback = function(self, value)
 			ESPSettings.Box = value
 			for _, player in ipairs(Players:GetPlayers()) do
+				if ESPObjects[player] then
+					hideAllObjects(ESPObjects[player])
+				end
 				updateESP(player)
 			end
 		end
@@ -649,6 +658,9 @@ function ESP:Load()
 		Callback = function(self, value)
 			ESPSettings.BoxType = value
 			for _, player in ipairs(Players:GetPlayers()) do
+				if ESPObjects[player] then
+					hideAllObjects(ESPObjects[player])
+				end
 				updateESP(player)
 			end
 		end
@@ -662,6 +674,9 @@ function ESP:Load()
 		Callback = function(self, value)
 			ESPSettings.BoxStyle = value
 			for _, player in ipairs(Players:GetPlayers()) do
+				if ESPObjects[player] then
+					hideAllObjects(ESPObjects[player])
+				end
 				updateESP(player)
 			end
 		end
@@ -675,6 +690,9 @@ function ESP:Load()
 		Callback = function(self, value)
 			ESPSettings.Box3DStyle = value
 			for _, player in ipairs(Players:GetPlayers()) do
+				if ESPObjects[player] then
+					hideAllObjects(ESPObjects[player])
+				end
 				updateESP(player)
 			end
 		end
@@ -728,6 +746,9 @@ function ESP:Load()
 		Callback = function(self, value)
 			ESPSettings.TeamCheck = value
 			for _, player in ipairs(Players:GetPlayers()) do
+				if ESPObjects[player] then
+					hideAllObjects(ESPObjects[player])
+				end
 				updateESP(player)
 			end
 		end
