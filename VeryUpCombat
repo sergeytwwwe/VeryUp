@@ -1,0 +1,664 @@
+-- Хранилище для объектов (используется для Target Show и Fov View)
+ESPObjects = ESPObjects or {}
+
+-- === Aimbot: Настройки ===
+local AimSettings = {
+    Enabled = false, -- Aimbot по умолчанию выключен
+    Bind = Enum.KeyCode.E, -- Бинд по умолчанию на E
+    Mode = "Camera", -- Camera или Mobile
+    Smoothness = 0.1, -- Плавность: 0.1 — без плавности, 1 — максимальная
+    TargetMode = "None", -- None, Team, Enemy, All
+    TargetPriority = "Distance", -- Приоритет цели: Health или Distance
+    WallCheck = false,
+    TriggerBot = false,
+    TriggerBotDelay = 0.2, -- Задержка между кликами (в секундах)
+    Manipulation = 0.5, -- Предсказание движения от 0.1 до 1
+    TargetShow = false,
+    TargetColor = Color3.fromRGB(255, 0, 0), -- Цвет круга по умолчанию
+    AimPart = "Head", -- Head или Torso
+    FovUse = false, -- Использовать FOV
+    FovRadius = 150, -- Радиус FOV (в пикселях)
+    FovView = false, -- Показывать FOV
+    FovColor = Color3.fromRGB(255, 255, 255) -- Цвет круга FOV
+}
+
+-- === Hitbox: Настройки ===
+local HitboxSettings = {
+    Enabled = false,
+    Target = "None", -- None, Torso, Head
+    Size = 1, -- Размер увеличения Hitbox (от 1 до 6)
+    TeamCheck = false -- Проверка команды
+}
+
+-- === Gun Mods: Настройки ===
+local GunModsSettings = {
+    NoReload = false,
+    InfAmmo = false
+}
+
+-- === Aimbot: Переменные ===
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+local Target = nil -- Текущая цель Aimbot
+local LockedTarget = nil -- Зафиксированная цель
+local MobileButton = nil
+local FovCircle = nil -- Круг FOV
+
+-- === Aimbot: Вспомогательные функции ===
+
+-- Проверка видимости через стену
+local function isVisibleThroughWall(character)
+    if not character or not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild(AimSettings.AimPart) then return false end
+    local origin = Camera.CFrame.Position
+    local target = character[AimSettings.AimPart].Position
+    local direction = (target - origin).Unit * ((target - origin).Magnitude + 10)
+    local ray = Ray.new(origin, direction)
+    local ignoreList = {LocalPlayer.Character, character, workspace.Terrain}
+    local part, _ = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList, false, true)
+    return not part or (part and part:IsDescendantOf(character))
+end
+
+-- Проверка, жива ли цель
+local function isTargetAlive(player)
+    if not player or not player.Character or not player.Character:FindFirstChild("Humanoid") then return false end
+    return player.Character.Humanoid.Health > 0
+end
+
+-- Получение ближайшей цели с учётом приоритета
+local function getClosestPlayer()
+    -- Если цель зафиксирована, проверяем её состояние
+    if LockedTarget and not isTargetAlive(LockedTarget) then
+        LockedTarget = nil
+        print("Target died, unlocking.")
+    elseif LockedTarget and AimSettings.WallCheck and not isVisibleThroughWall(LockedTarget.Character) then
+        LockedTarget = nil
+        print("Target behind wall, unlocking.")
+    elseif LockedTarget and (not LockedTarget.Character or not LockedTarget.Character:FindFirstChild(AimSettings.AimPart)) then
+        LockedTarget = nil
+        print("Target invalid, unlocking.")
+    elseif LockedTarget then
+        return LockedTarget, LockedTarget.Character[AimSettings.AimPart]
+    end
+
+    local candidates = {}
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild(AimSettings.AimPart) then
+            local humanoid = player.Character.Humanoid
+            if humanoid.Health <= 0 then continue end
+
+            if AimSettings.TargetMode == "None" then
+                continue
+            elseif AimSettings.TargetMode == "Team" and player.Team ~= LocalPlayer.Team then
+                continue
+            elseif AimSettings.TargetMode == "Enemy" and player.Team == LocalPlayer.Team then
+                continue
+            end
+
+            if AimSettings.WallCheck and not isVisibleThroughWall(player.Character) then
+                continue
+            end
+
+            local screenPoint, onScreen = Camera:WorldToViewportPoint(player.Character[AimSettings.AimPart].Position)
+            if not onScreen then continue end
+
+            local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
+            if AimSettings.FovUse and distance > AimSettings.FovRadius then continue end
+
+            table.insert(candidates, {
+                Player = player,
+                TargetPart = player.Character[AimSettings.AimPart],
+                Distance = distance,
+                Health = humanoid.Health
+            })
+        end
+    end
+
+    if #candidates == 0 then return nil, nil end
+
+    -- Сортировка по приоритету
+    if AimSettings.TargetPriority == "Health" then
+        table.sort(candidates, function(a, b)
+            return a.Health < b.Health
+        end)
+    else -- Distance
+        table.sort(candidates, function(a, b)
+            return a.Distance < b.Distance
+        end)
+    end
+
+    local closest = candidates[1]
+    LockedTarget = closest.Player
+    print("Locked onto new target: " .. closest.Player.Name)
+    return closest.Player, closest.TargetPart
+end
+
+-- Создание кнопки для режима Mobile
+local function createMobileButton()
+    if MobileButton then MobileButton:Destroy() end
+    
+    -- Создаём экранный GUI
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "MobileAimbotGui"
+    screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+    
+    MobileButton = Instance.new("TextButton")
+    MobileButton.Size = UDim2.new(0, 100, 0, 100)
+    MobileButton.Position = UDim2.new(1, -120, 0, 20)
+    MobileButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+    MobileButton.Text = "Aim"
+    MobileButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MobileButton.Font = Enum.Font.GothamBold
+    MobileButton.TextSize = 20
+    MobileButton.BorderSizePixel = 0
+    MobileButton.Parent = screenGui
+    print("Mobile button created at position: " .. tostring(MobileButton.Position))
+
+    -- Обработчик для клика мыши
+    MobileButton.MouseButton1Click:Connect(function()
+        AimSettings.Enabled = not AimSettings.Enabled
+        print("Mobile button clicked, Enabled = " .. tostring(AimSettings.Enabled))
+        if AimSettings.Enabled then
+            MobileButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        else
+            MobileButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+            LockedTarget = nil -- Сбрасываем цель при выключении
+            print("Aimbot disabled, target unlocked.")
+        end
+    end)
+
+    -- Обработчик для сенсорного нажатия
+    UserInputService.TouchTap:Connect(function(touchPositions, processedByUI)
+        if processedByUI then return end
+        local touchPos = touchPositions[1]
+        local buttonPos = MobileButton.AbsolutePosition
+        local buttonSize = MobileButton.AbsoluteSize
+        if touchPos.X >= buttonPos.X and touchPos.X <= buttonPos.X + buttonSize.X and
+           touchPos.Y >= buttonPos.Y and touchPos.Y <= buttonPos.Y + buttonSize.Y then
+            AimSettings.Enabled = not AimSettings.Enabled
+            print("Mobile button touched, Enabled = " .. tostring(AimSettings.Enabled))
+            if AimSettings.Enabled then
+                MobileButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            else
+                MobileButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+                LockedTarget = nil -- Сбрасываем цель при выключении
+                print("Aimbot disabled, target unlocked.")
+            end
+        end
+    end)
+end
+
+-- Обновление Hitbox
+local function updateHitbox()
+    if not HitboxSettings.Enabled then
+        -- Сбрасываем хитбокс для всех игроков, если Hitbox Expander выключен
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                local targetPart = HitboxSettings.Target == "Torso" and player.Character:FindFirstChild("Torso") or player.Character:FindFirstChild("Head")
+                if targetPart then
+                    targetPart.Size = Vector3.new(1, 1, 1)
+                    targetPart.CanCollide = true -- Возвращаем стандартное значение
+                end
+            end
+        end
+        return
+    end
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local targetPart = HitboxSettings.Target == "Torso" and player.Character:FindFirstChild("Torso") or player.Character:FindFirstChild("Head")
+
+            if targetPart then
+                -- Отключаем коллизию, чтобы избежать визуальных телепортаций
+                targetPart.CanCollide = false
+
+                -- Проверка на команду
+                if HitboxSettings.TeamCheck and player.Team == LocalPlayer.Team then
+                    targetPart.Size = Vector3.new(1, 1, 1) -- Сбрасываем хитбокс союзников до 1
+                else
+                    -- Увеличиваем размер для врагов
+                    targetPart.Size = Vector3.new(HitboxSettings.Size, HitboxSettings.Size, HitboxSettings.Size)
+                end
+            end
+        end
+    end
+end
+
+-- Обновление Gun Mods для игрока
+local function updateGunMods(player)
+    local playerData = player:FindFirstChild("PlayerLocalData")
+    if playerData then
+        if GunModsSettings.NoReload then
+            playerData.ammoLoadSecondary.Value = 999999
+            playerData.ammoLoadPrimary.Value = 999999
+        else
+            playerData.ammoLoadSecondary.Value = 0
+            playerData.ammoLoadPrimary.Value = 0
+        end
+        if GunModsSettings.InfAmmo then
+            playerData.ammoPrimary.Value = 999999
+            playerData.ammoSecondary.Value = 999999
+        else
+            playerData.ammoPrimary.Value = 0
+            playerData.ammoSecondary.Value = 0
+        end
+    end
+end
+
+-- Слушатель на возрождение игрока
+for _, player in ipairs(Players:GetPlayers()) do
+    player.CharacterAdded:Connect(function()
+        updateGunMods(player)
+    end)
+end
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        updateGunMods(player)
+    end)
+end)
+
+-- === Aimbot: Основная логика ===
+local lastTriggerTime = 0
+local function updateAimbot()
+    if not AimSettings.Enabled then
+        -- Скрываем все круги при выключении Aimbot
+        if FovCircle then FovCircle.Visible = false end
+        for _, objects in pairs(ESPObjects) do
+            if objects.TargetCircle then objects.TargetCircle.Visible = false end
+            if objects.AimCircle then objects.AimCircle.Visible = false end
+        end
+        return
+    end
+
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then
+        if FovCircle then FovCircle.Visible = false end
+        for _, objects in pairs(ESPObjects) do
+            if objects.TargetCircle then objects.TargetCircle.Visible = false end
+            if objects.AimCircle then objects.AimCircle.Visible = false end
+        end
+        return
+    end
+
+    local targetPlayer, targetPart = getClosestPlayer()
+    Target = targetPlayer
+
+    -- Обновление FOV-круга (в центре экрана)
+    local viewportSize = Camera.ViewportSize
+    local centerScreen = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+    if AimSettings.FovView then
+        if not FovCircle then
+            FovCircle = Drawing.new("Circle")
+            FovCircle.Radius = AimSettings.FovRadius
+            FovCircle.Thickness = 2
+            FovCircle.Filled = false
+            FovCircle.Color = AimSettings.FovColor
+            FovCircle.Position = centerScreen
+        end
+        FovCircle.Radius = AimSettings.FovRadius
+        FovCircle.Color = AimSettings.FovColor
+        FovCircle.Position = centerScreen
+        FovCircle.Visible = true
+    else
+        if FovCircle then FovCircle.Visible = false end
+    end
+
+    if targetPlayer and targetPart then
+        local targetPosition = targetPart.Position
+        if AimSettings.Manipulation > 0 then
+            local velocity = targetPart.Velocity
+            local prediction = velocity * (AimSettings.Manipulation * 0.1)
+            targetPosition = targetPosition + prediction
+        end
+
+        local screenPoint, onScreen = Camera:WorldToViewportPoint(targetPosition)
+        if not onScreen then
+            if AimSettings.TargetShow and ESPObjects[targetPlayer] then
+                if ESPObjects[targetPlayer].TargetCircle then ESPObjects[targetPlayer].TargetCircle.Visible = false end
+                if ESPObjects[targetPlayer].AimCircle then ESPObjects[targetPlayer].AimCircle.Visible = false end
+            end
+            return
+        end
+
+        local targetScreen = Vector2.new(screenPoint.X, screenPoint.Y)
+
+        if AimSettings.Mode == "Camera" then
+            -- Плавное наведение с использованием CFrame
+            local targetCFrame = CFrame.new(Camera.CFrame.Position, targetPosition)
+            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 1 - AimSettings.Smoothness)
+        end
+
+        if AimSettings.TriggerBot and targetPlayer then
+            local currentTime = tick()
+            if currentTime - lastTriggerTime >= AimSettings.TriggerBotDelay then
+                print("Trigger Bot: Attempting to click on target " .. targetPlayer.Name)
+                mouse1press()
+                wait(0.1)
+                mouse1release()
+                lastTriggerTime = currentTime
+                print("Trigger Bot: Click executed")
+            end
+        end
+
+        if AimSettings.TargetShow then
+            if not ESPObjects[targetPlayer] then ESPObjects[targetPlayer] = {} end
+            local objects = ESPObjects[targetPlayer]
+            if not objects.TargetCircle then
+                objects.TargetCircle = Drawing.new("Circle")
+                objects.TargetCircle.Radius = 10
+                objects.TargetCircle.Thickness = 2
+                objects.TargetCircle.Filled = false
+            end
+            objects.TargetCircle.Position = targetScreen
+            objects.TargetCircle.Color = AimSettings.TargetColor
+            objects.TargetCircle.Visible = true
+
+            if not objects.AimCircle then
+                objects.AimCircle = Drawing.new("Circle")
+                objects.AimCircle.Radius = 5
+                objects.AimCircle.Thickness = 2
+                objects.AimCircle.Filled = true
+            end
+            objects.AimCircle.Position = centerScreen
+            objects.AimCircle.Color = AimSettings.TargetColor
+            objects.AimCircle.Visible = true
+        else
+            for _, objects in pairs(ESPObjects) do
+                if objects.TargetCircle then objects.TargetCircle.Visible = false end
+                if objects.AimCircle then objects.AimCircle.Visible = false end
+            end
+        end
+    else
+        for _, objects in pairs(ESPObjects) do
+            if objects.TargetCircle then objects.TargetCircle.Visible = false end
+            if objects.AimCircle then objects.AimCircle.Visible = false end
+        end
+    end
+end
+
+-- Бинд для Aimbot
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == AimSettings.Bind and not UserInputService:GetFocusedTextBox() then
+        AimSettings.Enabled = not AimSettings.Enabled
+        if not AimSettings.Enabled then
+            LockedTarget = nil -- Сбрасываем цель при выключении
+            print("Aimbot disabled, target unlocked.")
+        end
+    end
+end)
+
+-- Обновление Aimbot и Hitbox
+getgenv().RunService.RenderStepped:Connect(function()
+    updateAimbot()
+    updateHitbox()
+end)
+
+-- === CombatTab: UI ===
+getgenv().CombatTab:Separator({Text = "Aim Settings"})
+
+-- Включение Aimbot
+getgenv().CombatTab:Checkbox({
+    IniFlag = "Aim_Enabled",
+    Label = "Aimbot",
+    Value = AimSettings.Enabled,
+    Callback = function(self, value)
+        AimSettings.Enabled = value
+        if AimSettings.Mode == "Mobile" and value and not MobileButton then
+            createMobileButton()
+            print("Attempting to create mobile button")
+        end
+    end
+})
+
+getgenv().CombatTab:Keybind({
+    IniFlag = "Aim_Bind",
+    Label = "Aimbot Bind",
+    Value = AimSettings.Bind,
+    Callback = function(self, value)
+        AimSettings.Bind = value
+    end
+})
+
+-- Режим Aimbot
+getgenv().CombatTab:Combo({
+    IniFlag = "Aim_Mode",
+    Label = "Aimbot Mode",
+    Selected = AimSettings.Mode,
+    Items = {"Camera", "Mobile"},
+    Callback = function(self, value)
+        AimSettings.Mode = value
+        if value == "Mobile" and AimSettings.Enabled and not MobileButton then
+            createMobileButton()
+            print("Creating mobile button due to mode switch")
+        elseif value == "Camera" and MobileButton then
+            MobileButton:Destroy()
+            MobileButton = nil
+        end
+    end
+})
+
+-- Плавность
+getgenv().CombatTab:SliderFloat({
+    IniFlag = "Aim_Smoothness",
+    Label = "Smoothness",
+    Value = AimSettings.Smoothness,
+    Minimum = 0.1,
+    Maximum = 1,
+    Step = 0.1,
+    Callback = function(self, value)
+        AimSettings.Smoothness = value -- 0.1 — без плавности, 1 — максимальная
+    end
+})
+
+-- Выбор цели
+getgenv().CombatTab:Combo({
+    IniFlag = "Aim_TargetMode",
+    Label = "Target Mode",
+    Selected = AimSettings.TargetMode,
+    Items = {"None", "All", "Team", "Enemy"},
+    Callback = function(self, value)
+        AimSettings.TargetMode = value
+    end
+})
+
+-- Приоритет цели
+getgenv().CombatTab:Combo({
+    IniFlag = "Aim_TargetPriority",
+    Label = "Target Priority",
+    Selected = AimSettings.TargetPriority,
+    Items = {"Distance", "Health"},
+    Callback = function(self, value)
+        AimSettings.TargetPriority = value
+    end
+})
+
+-- Проверка стен
+getgenv().CombatTab:Checkbox({
+    IniFlag = "Aim_WallCheck",
+    Label = "Wall Check",
+    Value = AimSettings.WallCheck,
+    Callback = function(self, value)
+        AimSettings.WallCheck = value
+    end
+})
+
+-- Trigger Bot
+getgenv().CombatTab:Checkbox({
+    IniFlag = "Aim_TriggerBot",
+    Label = "Trigger Bot",
+    Value = AimSettings.TriggerBot,
+    Callback = function(self, value)
+        AimSettings.TriggerBot = value
+    end
+})
+
+getgenv().CombatTab:SliderFloat({
+    IniFlag = "Aim_TriggerBotDelay",
+    Label = "Trigger Bot Delay",
+    Value = AimSettings.TriggerBotDelay,
+    Minimum = 0.05,
+    Maximum = 1,
+    Step = 0.05,
+    Callback = function(self, value)
+        AimSettings.TriggerBotDelay = value -- Задержка между кликами
+    end
+})
+
+-- Предсказание движения
+getgenv().CombatTab:SliderFloat({
+    IniFlag = "Aim_Manipulation",
+    Label = "Aimbot Manipulation",
+    Value = AimSettings.Manipulation,
+    Minimum = 0.1,
+    Maximum = 1,
+    Step = 0.1,
+    Callback = function(self, value)
+        AimSettings.Manipulation = value
+    end
+})
+
+-- FOV
+getgenv().CombatTab:Checkbox({
+    IniFlag = "Aim_FovUse",
+    Label = "Fov Use",
+    Value = AimSettings.FovUse,
+    Callback = function(self, value)
+        AimSettings.FovUse = value
+    end
+})
+
+getgenv().CombatTab:SliderFloat({
+    IniFlag = "Aim_FovRadius",
+    Label = "Fov Radius",
+    Value = AimSettings.FovRadius,
+    Minimum = 50,
+    Maximum = 500,
+    Step = 10,
+    Callback = function(self, value)
+        AimSettings.FovRadius = value
+    end
+})
+
+getgenv().CombatTab:Checkbox({
+    IniFlag = "Aim_FovView",
+    Label = "Fov View",
+    Value = AimSettings.FovView,
+    Callback = function(self, value)
+        AimSettings.FovView = value
+    end
+})
+
+getgenv().CombatTab:InputColor3({
+    IniFlag = "Aim_FovColor",
+    Label = "Fov Color",
+    Value = AimSettings.FovColor,
+    Callback = function(self, value)
+        AimSettings.FovColor = value
+    end
+})
+
+-- Target Show
+getgenv().CombatTab:Checkbox({
+    IniFlag = "Aim_TargetShow",
+    Label = "Target Show",
+    Value = AimSettings.TargetShow,
+    Callback = function(self, value)
+        AimSettings.TargetShow = value
+    end
+})
+
+getgenv().CombatTab:InputColor3({
+    IniFlag = "Aim_TargetColor",
+    Label = "Target Color",
+    Value = AimSettings.TargetColor,
+    Callback = function(self, value)
+        AimSettings.TargetColor = value
+        if AimSettings.TargetShow and Target and ESPObjects[Target] and ESPObjects[Target].TargetCircle then
+            ESPObjects[Target].TargetCircle.Color = value
+        end
+        if AimSettings.TargetShow and Target and ESPObjects[Target] and ESPObjects[Target].AimCircle then
+            ESPObjects[Target].AimCircle.Color = value
+        end
+    end
+})
+
+-- Часть тела
+getgenv().CombatTab:Combo({
+    IniFlag = "Aim_AimPart",
+    Label = "Aim Part",
+    Selected = AimSettings.AimPart,
+    Items = {"Head", "Torso"},
+    Callback = function(self, value)
+        AimSettings.AimPart = value
+    end
+})
+
+-- Hitbox
+getgenv().CombatTab:Separator({Text = "Hitbox"})
+getgenv().CombatTab:Checkbox({
+    IniFlag = "Hitbox_Enabled",
+    Label = "Hitbox Enable",
+    Value = HitboxSettings.Enabled,
+    Callback = function(self, value)
+        HitboxSettings.Enabled = value
+    end
+})
+getgenv().CombatTab:Combo({
+    IniFlag = "Hitbox_Target",
+    Label = "Hitbox Target",
+    Selected = HitboxSettings.Target,
+    Items = {"None", "Torso", "Head"},
+    Callback = function(self, value)
+        HitboxSettings.Target = value
+    end
+})
+getgenv().CombatTab:SliderFloat({
+    IniFlag = "Hitbox_Size",
+    Label = "Hitbox Size",
+    Value = HitboxSettings.Size,
+    Minimum = 1,
+    Maximum = 6,
+    Step = 0.5,
+    Callback = function(self, value)
+        HitboxSettings.Size = value
+    end
+})
+getgenv().CombatTab:Checkbox({
+    IniFlag = "Hitbox_TeamCheck",
+    Label = "Team Check",
+    Value = HitboxSettings.TeamCheck,
+    Callback = function(self, value)
+        HitboxSettings.TeamCheck = value
+    end
+})
+
+-- Gun Mods
+getgenv().CombatTab:Separator({Text = "Gun Mods"})
+
+getgenv().CombatTab:Checkbox({
+    IniFlag = "Gun_NoReload",
+    Label = "No Reload",
+    Value = GunModsSettings.NoReload,
+    Callback = function(self, value)
+        GunModsSettings.NoReload = value
+        for _, player in ipairs(Players:GetPlayers()) do
+            updateGunMods(player)
+        end
+    end
+})
+
+getgenv().CombatTab:Checkbox({
+    IniFlag = "Gun_InfAmmo",
+    Label = "Inf Ammo",
+    Value = GunModsSettings.InfAmmo,
+    Callback = function(self, value)
+        GunModsSettings.InfAmmo = value
+        for _, player in ipairs(Players:GetPlayers()) do
+            updateGunMods(player)
+        end
+    end
+})
