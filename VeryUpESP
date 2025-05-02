@@ -291,8 +291,8 @@ local function isVisibleThroughWall(character)
 	if not character or not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild("Head") then return false end
 	local origin = Camera.CFrame.Position
 	local headPos = character.Head.Position
-	local centerPos = character.HumanoidRootPart.Position
-	local points = {headPos, centerPos}
+	local torsoPos = character:FindFirstChild("UpperTorso") and character.UpperTorso.Position or (character:FindFirstChild("Torso") and character.Torso.Position or character.HumanoidRootPart.Position)
+	local points = {headPos, torsoPos}
 	local ignoreList = {LocalPlayer.Character, workspace.Terrain}
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player ~= LocalPlayer and player ~= character.Parent then
@@ -301,15 +301,17 @@ local function isVisibleThroughWall(character)
 			end
 		end
 	end
+	local isVisible = false
 	for _, point in ipairs(points) do
 		local direction = (point - origin).Unit * ((point - origin).Magnitude + 1)
 		local ray = Ray.new(origin, direction)
 		local part, _ = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList, false, true)
-		if part and not part:IsDescendantOf(character) then
-			return false
+		if not part or part:IsDescendantOf(character) then
+			isVisible = true
+			break
 		end
 	end
-	return true
+	return isVisible
 end
 
 -- Обновление ESP для игрока
@@ -384,8 +386,8 @@ local function updateESP(player)
 				objects.Box.Visible = true
 				objects.Box.Color = ESPSettings.BoxColor
 			elseif ESPSettings.VisibilityStyle == "Default" then
-				objects.Box.Visible = true -- Работает всегда
-				objects.Box.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
+				objects.Box.Visible = true
+				objects.Box.Color = ESPSettings.VisibleCheck and (isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor) or ESPSettings.BoxColor
 			elseif ESPSettings.VisibilityStyle == "VisibleOnly" then
 				objects.Box.Visible = isVisibleWall
 				objects.Box.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
@@ -437,7 +439,7 @@ local function updateESP(player)
 					line.Color = ESPSettings.BoxColor
 				elseif ESPSettings.VisibilityStyle == "Default" then
 					line.Visible = true
-					line.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
+					line.Color = ESPSettings.VisibleCheck and (isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor) or ESPSettings.BoxColor
 				elseif ESPSettings.VisibilityStyle == "VisibleOnly" then
 					line.Visible = isVisibleWall
 					line.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
@@ -459,7 +461,7 @@ local function updateESP(player)
 					objects.Box3D.Color3 = ESPSettings.BoxColor
 				elseif ESPSettings.VisibilityStyle == "Default" then
 					objects.Box3D.Visible = true
-					objects.Box3D.Color3 = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
+					objects.Box3D.Color3 = ESPSettings.VisibleCheck and (isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor) or ESPSettings.BoxColor
 				elseif ESPSettings.VisibilityStyle == "VisibleOnly" then
 					objects.Box3D.Visible = isVisibleWall
 					objects.Box3D.Color3 = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
@@ -508,7 +510,7 @@ local function updateESP(player)
 						line.Color = ESPSettings.BoxColor
 					elseif ESPSettings.VisibilityStyle == "Default" then
 						line.Visible = true
-						line.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
+						line.Color = ESPSettings.VisibleCheck and (isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor) or ESPSettings.BoxColor
 					elseif ESPSettings.VisibilityStyle == "VisibleOnly" then
 						line.Visible = isVisibleWall
 						line.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
@@ -554,7 +556,7 @@ local function updateESP(player)
 		objects.HealthBar.To = Vector2.new(humPos.X - distanceY - 4, humPos.Y - distanceY * 2)
 		objects.HealthBar.Visible = true
 		objects.HealthGreen.From = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2)
-		objects.HealthGreen.To = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2 - healthOffset)
+		objects.BoxGreen.To = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2 - healthOffset)
 		objects.HealthGreen.Color = healthColor
 		objects.HealthGreen.Visible = true
 		objects.HealthText.Text = tostring(math.floor(humanoid.Health))
