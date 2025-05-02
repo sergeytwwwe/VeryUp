@@ -1,12 +1,17 @@
--- LoaderUI.lua: Красивый лоадер
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 
 local function createLoader()
+    -- Проверяем, существует ли уже LoaderGui, и удаляем его
+    if CoreGui:FindFirstChild("LoaderGui") then
+        CoreGui.LoaderGui:Destroy()
+    end
+
     local loaderGui = Instance.new("ScreenGui")
     loaderGui.Name = "LoaderGui"
     loaderGui.Parent = CoreGui
     loaderGui.IgnoreGuiInset = true
+    loaderGui.ResetOnSpawn = false -- Предотвращаем сброс при возрождении игрока
 
     local loaderFrame = Instance.new("Frame")
     loaderFrame.Size = UDim2.new(0, 300, 0, 200)
@@ -110,10 +115,11 @@ local function createLoader()
     percentLabel.Parent = loaderFrame
 
     local function updateLoader(progress)
+        progress = math.clamp(progress, 0, 100) -- Ограничиваем прогресс от 0 до 100
         local angle = math.rad(360 * (progress / 100))
         progressFill.Rotation = angle
         percentLabel.Text = math.floor(progress) .. "%"
-        
+
         local tween = TweenService:Create(percentLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0.2})
         tween:Play()
         tween.Completed:Connect(function()
@@ -123,8 +129,21 @@ local function createLoader()
     end
 
     local function hideLoader(callback)
+        -- Останавливаем анимации
+        particleTween:Cancel()
+        pulseTween:Cancel()
+
+        -- Плавное исчезновение
         local fadeOut = TweenService:Create(loaderFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 1})
         fadeOut:Play()
+
+        -- Исчезновение всех дочерних элементов
+        for _, child in pairs(loaderFrame:GetChildren()) do
+            if child:IsA("GuiObject") then
+                TweenService:Create(child, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 1, ImageTransparency = 1, TextTransparency = 1}):Play()
+            end
+        end
+
         fadeOut.Completed:Connect(function()
             loaderGui:Destroy()
             if callback then callback() end
