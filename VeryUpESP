@@ -14,13 +14,16 @@ local ESPSettings = {
 	BoxStyle = "Default",
 	Box3DStyle = "Fill",
 	BoxColor = Color3.fromRGB(255, 0, 0),
+	VisibilityMode = "None", -- None, Enemy, Team, All
+	VisibleCheck = false,
+	VisibilityStyle = "Default", -- Smart, Default
+	VisibilityDefaultColor = Color3.fromRGB(0, 0, 255), -- Синий по умолчанию
 	Name = false,
 	NameColor = Color3.fromRGB(255, 255, 255),
 	Health = false,
 	HealthColor = Color3.fromRGB(0, 255, 0),
 	Distance = false,
 	DistanceColor = Color3.fromRGB(255, 255, 255),
-	TeamCheck = false,
 	Skeleton = false,
 	SkeletonColor = Color3.fromRGB(255, 255, 255),
 	Chams = false,
@@ -68,12 +71,21 @@ local function NewText()
 	return text
 end
 
+local function NewEye()
+	local eye = Drawing.new("Circle")
+	eye.Visible = false
+	eye.Radius = 10
+	eye.Thickness = 1
+	eye.Color = Color3.fromRGB(255, 0, 0)
+	eye.Filled = true
+	return eye
+end
+
 -- Функция для создания заполненного 3D-бокса (Fill)
 local function create3DBoxFill(character)
 	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 	if not humanoidRootPart then return nil end
 
-	-- Определяем размеры персонажа
 	local size = Vector3.new(4, 6, 2)
 	local head = character:FindFirstChild("Head")
 	local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
@@ -269,23 +281,36 @@ local function hideAllObjects(objects)
 	if objects.Chams then
 		objects.Chams.Enabled = false
 	end
+	if objects.Eye then
+		objects.Eye.Visible = false
+	end
+end
+
+-- Проверка видимости через стену
+local function isVisibleThroughWall(character)
+	local ray = Ray.new(Camera.CFrame.Position, (character.HumanoidRootPart.Position - Camera.CFrame.Position).Unit * 1000)
+	local part, pos = workspace:FindPartOnRayWithIgnoreList(ray, {LocalPlayer.Character, character})
+	return not part
 end
 
 -- Обновление ESP для игрока
 local function updateESP(player)
-	-- Скрываем все объекты в начале
-	if ESPObjects[player] then
-		hideAllObjects(ESPObjects[player])
-	else
-		ESPObjects[player] = {}
-	end
-
-	if not ESPSettings.Enabled or player == LocalPlayer or (ESPSettings.TeamCheck and player.Team == LocalPlayer.Team) then
+	if not ESPSettings.Enabled then
+		if ESPObjects[player] then
+			hideAllObjects(ESPObjects[player])
+		end
 		return
 	end
 
+	if not ESPObjects[player] then
+		ESPObjects[player] = {}
+	end
+
+	local objects = ESPObjects[player]
+	hideAllObjects(objects)
+
 	local character = player.Character
-	if not character or not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild("Humanoid") or character.Humanoid.Health <= 0 then
+	if not character or not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild("Humanoid") then
 		return
 	end
 
@@ -293,29 +318,34 @@ local function updateESP(player)
 	local humanoid = character.Humanoid
 	local distance = (LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart and (rootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude) or math.huge
 
+	-- Проверка на кого показывать ESP
+	if ESPSettings.VisibilityMode == "None" then
+		return
+	elseif ESPSettings.VisibilityMode == "Enemy" and player.Team == LocalPlayer.Team then
+		return
+	elseif ESPSettings.VisibilityMode == "Team" and player.Team ~= LocalPlayer.Team then
+		return
+	end
+
 	if distance > ESPSettings.MaxDistance then
 		return
 	end
 
-	local objects = ESPObjects[player]
-
 	local humPos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
 	local screenSize = Camera.ViewportSize
-	-- Более строгая проверка видимости
 	local isVisible = onScreen and humPos.X >= 0 and humPos.X <= screenSize.X and humPos.Y >= 0 and humPos.Y <= screenSize.Y and humPos.Z > 0
 
 	if not isVisible then
 		return
 	end
 
-	local headPos = character:FindFirstChild("Head") and character.Head.Position or rootPart.Position
-	local headScreenPos, headOnScreen = Camera:WorldToViewportPoint(headPos)
-	-- Проверяем, видима ли голова
+	local headPos, headOnScreen = Camera:WorldToViewportPoint(character:FindFirstChild("Head") and character.Head.Position or rootPart.Position)
 	if not headOnScreen then
 		return
 	end
 
-	local distanceY = math.clamp((Vector2.new(headScreenPos.X, headScreenPos.Y) - Vector2.new(humPos.X, humPos.Y)).Magnitude, 2, math.huge)
+	local distanceY = math.clamp((Vector2.new(headPos.X, headPos.Y) - Vector2.new(humPos.X, humPos.Y)).Magnitude, 2, math.huge)
+	local isVisibleWall = isVisibleThroughWall(character)
 
 	-- Box (2D)
 	if ESPSettings.Box and ESPSettings.BoxType == "2D" then
@@ -330,8 +360,13 @@ local function updateESP(player)
 				quad.PointD = Vector2.new(humPos.X + distanceY, humPos.Y + distanceY * 2)
 			end
 			setBoxPoints(objects.Box)
-			objects.Box.Color = ESPSettings.BoxColor
-			objects.Box.Visible = true
+			if ESPSettings.VisibilityStyle == "Smart" then
+				objects.Box.Color = isVisibleWall and ESPSettings.BoxColor or Color3.fromRGB(0, 255, 0)
+				objects.Box.Visible = isVisibleWall
+			else
+				objects.Box.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
+				objects.Box.Visible = true
+			end
 		elseif ESPSettings.BoxStyle == "Modern" then
 			if not objects.BoxCorners then
 				objects.BoxCorners = {
@@ -372,10 +407,20 @@ local function updateESP(player)
 			objects.BoxCorners.BottomRightV.From = bottomRight + Vector2.new(0, overlap)
 			objects.BoxCorners.BottomRightV.To = bottomRight - Vector2.new(0, cornerLength)
 
-			for key, line in pairs(objects.BoxCorners) do
-				line.Color = ESPSettings.BoxColor
-				line.Thickness = ESPSettings.BoxThickness
-				line.Visible = true
+			if ESPSettings.VisibilityStyle == "Smart" then
+				local color = isVisibleWall and ESPSettings.BoxColor or Color3.fromRGB(0, 255, 0)
+				for key, line in pairs(objects.BoxCorners) do
+					line.Color = color
+					line.Thickness = ESPSettings.BoxThickness
+					line.Visible = isVisibleWall
+				end
+			else
+				local color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
+				for key, line in pairs(objects.BoxCorners) do
+					line.Color = color
+					line.Thickness = ESPSettings.BoxThickness
+					line.Visible = true
+				end
 			end
 		end
 	elseif ESPSettings.Box and ESPSettings.BoxType == "3D" then
@@ -576,10 +621,24 @@ local function updateESP(player)
 		end
 		objects.Chams.FillColor = ESPSettings.ChamsColor
 		objects.Chams.OutlineColor = ESPSettings.ChamsColor
-		objects.Chams.Enabled = true
+		objects.Chams.Enabled = humanoid.Health > 0 or ESPSettings.Enabled -- Показываем Chams даже после смерти, если ESP включён
 	else
 		if objects.Chams then
 			objects.Chams.Enabled = false
+		end
+	end
+
+	-- Visible Check
+	if ESPSettings.VisibleCheck then
+		if not objects.Eye then
+			objects.Eye = NewEye()
+		end
+		objects.Eye.Position = Vector2.new(humPos.X, humPos.Y - distanceY * 2 - 40)
+		objects.Eye.Color = isVisibleWall and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+		objects.Eye.Visible = true
+	else
+		if objects.Eye then
+			objects.Eye.Visible = false
 		end
 	end
 end
@@ -703,6 +762,75 @@ function ESP:Load()
 		Box3DStyleCombo.Visible = ESPSettings.BoxType == "3D"
 	end)
 
+	VisualTab:Combo({
+		IniFlag = "ESP_VisibilityMode",
+		Label = "Show ESP On",
+		Selected = ESPSettings.VisibilityMode,
+		Items = {"None", "Enemy", "Team", "All"},
+		Callback = function(self, value)
+			ESPSettings.VisibilityMode = value
+			for _, player in ipairs(Players:GetPlayers()) do
+				if ESPObjects[player] then
+					hideAllObjects(ESPObjects[player])
+				end
+				updateESP(player)
+			end
+		end
+	})
+
+	VisualTab:Checkbox({
+		IniFlag = "ESP_VisibleCheck",
+		Label = "Visible Check",
+		Value = ESPSettings.VisibleCheck,
+		Callback = function(self, value)
+			ESPSettings.VisibleCheck = value
+			for _, player in ipairs(Players:GetPlayers()) do
+				updateESP(player)
+			end
+		end
+	})
+
+	local VisibilityStyleCombo = VisualTab:Combo({
+		IniFlag = "ESP_VisibilityStyle",
+		Label = "Visibility Style",
+		Selected = ESPSettings.VisibilityStyle,
+		Items = {"Smart", "Default"},
+		Callback = function(self, value)
+			ESPSettings.VisibilityStyle = value
+			for _, player in ipairs(Players:GetPlayers()) do
+				if ESPObjects[player] then
+					hideAllObjects(ESPObjects[player])
+				end
+				updateESP(player)
+			end
+		end
+	})
+
+	local VisibilityColorInput = VisualTab:InputColor3({
+		IniFlag = "ESP_VisibilityDefaultColor",
+		Label = "Default Visibility Color",
+		Value = ESPSettings.VisibilityDefaultColor,
+		Callback = function(self, value)
+			ESPSettings.VisibilityDefaultColor = value
+			for _, player in ipairs(Players:GetPlayers()) do
+				if ESPObjects[player] then
+					if ESPObjects[player].Box then
+						objects.Box.Color = isVisibleThroughWall(player.Character) and value or ESPSettings.BoxColor
+					end
+					if ESPObjects[player].BoxCorners then
+						for key, line in pairs(ESPObjects[player].BoxCorners) do
+							line.Color = isVisibleThroughWall(player.Character) and value or ESPSettings.BoxColor
+						end
+					end
+				end
+			end
+		end
+	})
+
+	RunService.Heartbeat:Connect(function()
+		VisibilityColorInput.Visible = ESPSettings.VisibilityStyle == "Default" and ESPSettings.Box
+	end)
+
 	VisualTab:Checkbox({
 		IniFlag = "ESP_Name",
 		Label = "Name",
@@ -734,21 +862,6 @@ function ESP:Load()
 		Callback = function(self, value)
 			ESPSettings.Distance = value
 			for _, player in ipairs(Players:GetPlayers()) do
-				updateESP(player)
-			end
-		end
-	})
-
-	VisualTab:Checkbox({
-		IniFlag = "ESP_TeamCheck",
-		Label = "Team Check",
-		Value = ESPSettings.TeamCheck,
-		Callback = function(self, value)
-			ESPSettings.TeamCheck = value
-			for _, player in ipairs(Players:GetPlayers()) do
-				if ESPObjects[player] then
-					hideAllObjects(ESPObjects[player])
-				end
 				updateESP(player)
 			end
 		end
@@ -805,11 +918,11 @@ function ESP:Load()
 			for _, player in ipairs(Players:GetPlayers()) do
 				if ESPObjects[player] then
 					if ESPObjects[player].Box then
-						ESPObjects[player].Box.Color = value
+						objects.Box.Color = isVisibleThroughWall(player.Character) and ESPSettings.VisibilityDefaultColor or value
 					end
 					if ESPObjects[player].BoxCorners then
 						for key, line in pairs(ESPObjects[player].BoxCorners) do
-							line.Color = value
+							line.Color = isVisibleThroughWall(player.Character) and ESPSettings.VisibilityDefaultColor or value
 						end
 					end
 					if ESPObjects[player].Box3D then
