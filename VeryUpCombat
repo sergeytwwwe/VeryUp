@@ -230,28 +230,25 @@ end
 
 -- Обновление Gun Mods для игрока
 local function updateGunMods()
-    local player = LocalPlayer
-    local character = player.Character
+    local character = LocalPlayer.Character
     if not character then return end
 
     local weapon = character:FindFirstChildOfClass("Tool")
     if not weapon then return end
 
-    -- Проверяем наличие свойств Ammo и ClipAmmo (зависят от игры)
-    local ammo = weapon:FindFirstChild("Ammo")
-    local clipAmmo = weapon:FindFirstChild("ClipAmmo")
-
     -- Infinite Ammo
     if GunModsSettings.InfAmmo then
+        local ammo = weapon:FindFirstChild("Ammo")
+        local clipAmmo = weapon:FindFirstChild("ClipAmmo")
         if ammo and ammo:IsA("IntValue") then
-            ammo.Value = 9999 -- Устанавливаем большое количество патронов
+            ammo.Value = math.max(ammo.Value, 9999) -- Устанавливаем минимум 9999
         end
         if clipAmmo and clipAmmo:IsA("IntValue") then
-            clipAmmo.Value = 9999
+            clipAmmo.Value = math.max(clipAmmo.Value, 9999)
         end
     end
 
-    -- No Reload (работает через отключение перезарядки, если игра поддерживает)
+    -- No Reload
     if GunModsSettings.NoReload then
         local reloadTime = weapon:FindFirstChild("ReloadTime")
         if reloadTime and reloadTime:IsA("NumberValue") then
