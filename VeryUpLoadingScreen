@@ -1,201 +1,137 @@
-return function()
-    local TweenService = game:GetService("TweenService")
-    local CoreGui = game:GetService("CoreGui")
+-- LoaderUI.lua: Красивый лоадер
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
 
-    -- Создание улучшенного загрузочного экрана
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "LoadingGui"
-    screenGui.Parent = CoreGui
-    screenGui.IgnoreGuiInset = true
+local function createLoader()
+    local loaderGui = Instance.new("ScreenGui")
+    loaderGui.Name = "LoaderGui"
+    loaderGui.Parent = CoreGui
+    loaderGui.IgnoreGuiInset = true
 
-    -- Полупрозрачный затемнённый фон
-    local background = Instance.new("Frame")
-    background.Size = UDim2.new(1, 0, 1, 0)
-    background.Position = UDim2.new(0, 0, 0, 0)
-    background.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    background.BackgroundTransparency = 1
-    background.Parent = screenGui
+    local loaderFrame = Instance.new("Frame")
+    loaderFrame.Size = UDim2.new(0, 300, 0, 200)
+    loaderFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
+    loaderFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+    loaderFrame.BackgroundTransparency = 0.5
+    loaderFrame.BorderSizePixel = 0
+    loaderFrame.Parent = loaderGui
 
-    local backgroundTweenIn = TweenService:Create(background, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.4})
-    local backgroundTweenOut = TweenService:Create(background, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 1})
+    local loaderCorner = Instance.new("UICorner")
+    loaderCorner.CornerRadius = UDim.new(0, 20)
+    loaderCorner.Parent = loaderFrame
 
-    -- Тень для основного контейнера
-    local frameShadow = Instance.new("Frame")
-    frameShadow.Size = UDim2.new(0, 460, 0, 260)
-    frameShadow.Position = UDim2.new(0.5, -230, 0.5, -120)
-    frameShadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    frameShadow.BackgroundTransparency = 1
-    frameShadow.BorderSizePixel = 0
-    frameShadow.Parent = screenGui
-
-    local frameShadowCorner = Instance.new("UICorner")
-    frameShadowCorner.CornerRadius = UDim.new(0, 15)
-    frameShadowCorner.Parent = frameShadow
-
-    local frameShadowGradient = Instance.new("UIGradient")
-    frameShadowGradient.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.5),
-        NumberSequenceKeypoint.new(0.5, 0.7),
-        NumberSequenceKeypoint.new(1, 1)
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 40, 80)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 20, 40))
     })
-    frameShadowGradient.Parent = frameShadow
+    gradient.Rotation = 90
+    gradient.Transparency = NumberSequence.new(0.3)
+    gradient.Parent = loaderFrame
 
-    local frameShadowTweenIn = TweenService:Create(frameShadow, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.5})
-    local frameShadowTweenOut = TweenService:Create(frameShadow, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 1})
+    local loaderStroke = Instance.new("UIStroke")
+    loaderStroke.Thickness = 2
+    loaderStroke.Color = Color3.fromRGB(50, 100, 150)
+    loaderStroke.Transparency = 0.4
+    loaderStroke.Parent = loaderFrame
 
-    -- Основной контейнер с закруглениями
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 450, 0, 250)
-    frame.Position = UDim2.new(0.5, -225, 0.5, -125)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-    frame.BackgroundTransparency = 1
-    frame.BorderSizePixel = 0
-    frame.Parent = screenGui
+    local progressCircle = Instance.new("ImageLabel")
+    progressCircle.Size = UDim2.new(0, 150, 0, 150)
+    progressCircle.Position = UDim2.new(0.5, -75, 0.5, -75)
+    progressCircle.BackgroundTransparency = 1
+    progressCircle.Image = "rbxassetid://5028857472"
+    progressCircle.ImageColor3 = Color3.fromRGB(50, 100, 150)
+    progressCircle.Parent = loaderFrame
 
-    local frameCorner = Instance.new("UICorner")
-    frameCorner.CornerRadius = UDim.new(0, 15)
-    frameCorner.Parent = frame
+    local circleCorner = Instance.new("UICorner")
+    circleCorner.CornerRadius = UDim.new(1, 0)
+    circleCorner.Parent = progressCircle
 
-    local frameTweenIn = TweenService:Create(frame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.1})
-    local frameTweenOut = TweenService:Create(frame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 1})
+    local progressStroke = Instance.new("UIStroke")
+    progressStroke.Thickness = 4
+    progressStroke.Color = Color3.fromRGB(80, 140, 200)
+    progressStroke.Transparency = 0.3
+    progressStroke.Parent = progressCircle
 
-    -- Заголовок с эффектом свечения через UIStroke
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(0, 400, 0, 50)
-    titleLabel.Position = UDim2.new(0.5, -200, 0, 30)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = "Very Up Hack Menu v44"
-    titleLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-    titleLabel.TextSize = 40
-    titleLabel.Font = Enum.Font.GothamBlack
-    titleLabel.TextTransparency = 1
-    titleLabel.Parent = frame
+    local progressFill = Instance.new("ImageLabel")
+    progressFill.Size = UDim2.new(1, 0, 1, 0)
+    progressFill.BackgroundTransparency = 1
+    progressFill.Image = "rbxassetid://5028857472"
+    progressFill.ImageColor3 = Color3.fromRGB(80, 140, 200)
+    progressFill.ImageTransparency = 0.7
+    progressFill.Parent = progressCircle
 
-    local titleStroke = Instance.new("UIStroke")
-    titleStroke.Thickness = 2
-    titleStroke.Color = Color3.fromRGB(255, 100, 100)
-    titleStroke.Transparency = 1
-    titleStroke.Parent = titleLabel
+    local gradientFill = Instance.new("UIGradient")
+    gradientFill.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 160, 250)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 120, 200))
+    })
+    gradientFill.Rotation = 45
+    gradientFill.Parent = progressFill
 
-    local titleTweenIn = TweenService:Create(titleLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0})
-    local titleStrokeTweenIn = TweenService:Create(titleStroke, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Transparency = 0})
-    local titleTweenOut = TweenService:Create(titleLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1})
-    local titleStrokeTweenOut = TweenService:Create(titleStroke, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Transparency = 1})
+    -- Частицы внутри круга
+    local particleEffect = Instance.new("ImageLabel")
+    particleEffect.Size = UDim2.new(0.8, 0, 0.8, 0)
+    particleEffect.Position = UDim2.new(0.5, 0, 0.5, 0)
+    particleEffect.AnchorPoint = Vector2.new(0.5, 0.5)
+    particleEffect.BackgroundTransparency = 1
+    particleEffect.Image = "rbxassetid://243098098"
+    particleEffect.ImageColor3 = Color3.fromRGB(150, 200, 255)
+    particleEffect.ImageTransparency = 0.5
+    particleEffect.Parent = progressCircle
 
-    -- Текст "Loading..." с эффектом пульсации
+    local particleTween = TweenService:Create(particleEffect, TweenInfo.new(5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {Rotation = 360})
+    particleTween:Play()
+
+    -- Текст "Loading..." с пульсацией
     local loadingLabel = Instance.new("TextLabel")
-    loadingLabel.Size = UDim2.new(0, 400, 0, 30)
-    loadingLabel.Position = UDim2.new(0.5, -200, 0, 90)
+    loadingLabel.Size = UDim2.new(0, 100, 0, 30)
+    loadingLabel.Position = UDim2.new(0.5, -50, 0.5, -15)
     loadingLabel.BackgroundTransparency = 1
     loadingLabel.Text = "Loading..."
-    loadingLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-    loadingLabel.TextSize = 24
-    loadingLabel.Font = Enum.Font.Gotham
-    loadingLabel.TextTransparency = 1
-    loadingLabel.Parent = frame
+    loadingLabel.TextColor3 = Color3.fromRGB(200, 220, 255)
+    loadingLabel.TextSize = 20
+    loadingLabel.Font = Enum.Font.GothamBold
+    loadingLabel.TextTransparency = 0
+    loadingLabel.Parent = progressCircle
 
-    local loadingTweenIn = TweenService:Create(loadingLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0})
-    local loadingTweenOut = TweenService:Create(loadingLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1})
+    local pulseTween = TweenService:Create(loadingLabel, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {TextTransparency = 0.5})
+    pulseTween:Play()
 
-    -- Эффект пульсации для "Loading..."
-    local function pulseLoadingLabel()
-        while loadingLabel.Parent do
-            local pulseIn = TweenService:Create(loadingLabel, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {TextTransparency = 0.2})
-            local pulseOut = TweenService:Create(loadingLabel, TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {TextTransparency = 0})
-            pulseIn:Play()
-            pulseIn.Completed:Wait()
-            pulseOut:Play()
-            pulseOut.Completed:Wait()
-        end
+    local percentLabel = Instance.new("TextLabel")
+    percentLabel.Size = UDim2.new(0, 200, 0, 50)
+    percentLabel.Position = UDim2.new(0.5, -100, 0.75, -25)
+    percentLabel.BackgroundTransparency = 1
+    percentLabel.Text = "0%"
+    percentLabel.TextColor3 = Color3.fromRGB(200, 220, 255)
+    percentLabel.TextSize = 24
+    percentLabel.Font = Enum.Font.GothamBold
+    percentLabel.TextTransparency = 0
+    percentLabel.Parent = loaderFrame
+
+    local function updateLoader(progress)
+        local angle = math.rad(360 * (progress / 100))
+        progressFill.Rotation = angle
+        percentLabel.Text = math.floor(progress) .. "%"
+        
+        local tween = TweenService:Create(percentLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0.2})
+        tween:Play()
+        tween.Completed:Connect(function()
+            local tweenBack = TweenService:Create(percentLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0})
+            tweenBack:Play()
+        end)
     end
 
-    -- Полоса загрузки с градиентом
-    local loadingBarFrame = Instance.new("Frame")
-    loadingBarFrame.Size = UDim2.new(0, 350, 0, 25)
-    loadingBarFrame.Position = UDim2.new(0.5, -175, 0, 130)
-    loadingBarFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-    loadingBarFrame.BackgroundTransparency = 1
-    loadingBarFrame.BorderSizePixel = 0
-    loadingBarFrame.Parent = frame
-
-    local loadingBarFrameCorner = Instance.new("UICorner")
-    loadingBarFrameCorner.CornerRadius = UDim.new(0, 8)
-    loadingBarFrameCorner.Parent = loadingBarFrame
-
-    local loadingBarFrameTweenIn = TweenService:Create(loadingBarFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.3})
-    local loadingBarFrameTweenOut = TweenService:Create(loadingBarFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 1})
-
-    local loadingBar = Instance.new("Frame")
-    loadingBar.Size = UDim2.new(0, 0, 1, 0)
-    loadingBar.BackgroundTransparency = 1
-    loadingBar.BorderSizePixel = 0
-    loadingBar.Parent = loadingBarFrame
-
-    local loadingBarGradient = Instance.new("UIGradient")
-    loadingBarGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 150, 255))
-    })
-    loadingBarGradient.Rotation = 45
-    loadingBarGradient.Parent = loadingBar
-
-    local loadingBarCorner = Instance.new("UICorner")
-    loadingBarCorner.CornerRadius = UDim.new(0, 8)
-    loadingBarCorner.Parent = loadingBar
-
-    local loadingBarTweenIn = TweenService:Create(loadingBar, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0})
-
-    -- Процент загрузки
-    local loadingPercent = Instance.new("TextLabel")
-    loadingPercent.Size = UDim2.new(0, 400, 0, 30)
-    loadingPercent.Position = UDim2.new(0.5, -200, 0, 170)
-    loadingPercent.BackgroundTransparency = 1
-    loadingPercent.Text = "0%"
-    loadingPercent.TextColor3 = Color3.fromRGB(150, 255, 150)
-    loadingPercent.TextSize = 20
-    loadingPercent.Font = Enum.Font.Gotham
-    loadingPercent.TextTransparency = 1
-    loadingPercent.Parent = frame
-
-    local loadingPercentTweenIn = TweenService:Create(loadingPercent, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0})
-    local loadingPercentTweenOut = TweenService:Create(loadingPercent, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1})
-
-    -- Анимация появления
-    backgroundTweenIn:Play()
-    frameShadowTweenIn:Play()
-    frameTweenIn:Play()
-    titleTweenIn:Play()
-    titleStrokeTweenIn:Play()
-    loadingTweenIn:Play()
-    loadingBarFrameTweenIn:Play()
-    loadingBarTweenIn:Play()
-    loadingPercentTweenIn:Play()
-
-    -- Запуск эффекта пульсации текста "Loading..."
-    spawn(pulseLoadingLabel)
-
-    -- Анимация загрузки
-    local elapsedTime = 0
-    local totalTime = 3
-    while elapsedTime < totalTime do
-        elapsedTime = elapsedTime + 0.05
-        local progress = elapsedTime / totalTime
-        local loadingBarTween = TweenService:Create(loadingBar, TweenInfo.new(0.05, Enum.EasingStyle.Linear), {Size = UDim2.new(progress, 0, 1, 0)})
-        loadingBarTween:Play()
-        loadingPercent.Text = math.floor(progress * 100) .. "%"
-        wait(0.05)
+    local function hideLoader(callback)
+        local fadeOut = TweenService:Create(loaderFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 1})
+        fadeOut:Play()
+        fadeOut.Completed:Connect(function()
+            loaderGui:Destroy()
+            if callback then callback() end
+        end)
     end
 
-    -- Анимация исчезновения
-    backgroundTweenOut:Play()
-    frameShadowTweenOut:Play()
-    frameTweenOut:Play()
-    titleTweenOut:Play()
-    titleStrokeTweenOut:Play()
-    loadingTweenOut:Play()
-    loadingBarFrameTweenOut:Play()
-    loadingPercentTweenOut:Play()
-    loadingPercentTweenOut.Completed:Wait()
-
-    screenGui:Destroy()
+    return updateLoader, hideLoader
 end
+
+return createLoader
