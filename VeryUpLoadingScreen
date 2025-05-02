@@ -1,137 +1,107 @@
--- LoaderUI.lua: Красивый лоадер
-local CoreGui = game:GetService("CoreGui")
-local TweenService = game:GetService("TweenService")
+-- loader.lua: Основной загрузчик
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 
-local function createLoader()
-    local loaderGui = Instance.new("ScreenGui")
-    loaderGui.Name = "LoaderGui"
-    loaderGui.Parent = CoreGui
-    loaderGui.IgnoreGuiInset = true
+-- Загрузка VeryUpNotifications
+local showNotification = loadstring(game:HttpGet("https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/VeryUpNotifications"))()
 
-    local loaderFrame = Instance.new("Frame")
-    loaderFrame.Size = UDim2.new(0, 300, 0, 200)
-    loaderFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
-    loaderFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-    loaderFrame.BackgroundTransparency = 0.5
-    loaderFrame.BorderSizePixel = 0
-    loaderFrame.Parent = loaderGui
+-- Загрузка VeryUpLoadingScreen
+local createLoader = loadstring(game:HttpGet("https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/VeryUpLoadingScreen"))()
+local updateLoader, hideLoader = createLoader()
 
-    local loaderCorner = Instance.new("UICorner")
-    loaderCorner.CornerRadius = UDim.new(0, 20)
-    loaderCorner.Parent = loaderFrame
-
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 40, 80)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 20, 40))
-    })
-    gradient.Rotation = 90
-    gradient.Transparency = NumberSequence.new(0.3)
-    gradient.Parent = loaderFrame
-
-    local loaderStroke = Instance.new("UIStroke")
-    loaderStroke.Thickness = 2
-    loaderStroke.Color = Color3.fromRGB(50, 100, 150)
-    loaderStroke.Transparency = 0.4
-    loaderStroke.Parent = loaderFrame
-
-    local progressCircle = Instance.new("ImageLabel")
-    progressCircle.Size = UDim2.new(0, 150, 0, 150)
-    progressCircle.Position = UDim2.new(0.5, -75, 0.5, -75)
-    progressCircle.BackgroundTransparency = 1
-    progressCircle.Image = "rbxassetid://5028857472"
-    progressCircle.ImageColor3 = Color3.fromRGB(50, 100, 150)
-    progressCircle.Parent = loaderFrame
-
-    local circleCorner = Instance.new("UICorner")
-    circleCorner.CornerRadius = UDim.new(1, 0)
-    circleCorner.Parent = progressCircle
-
-    local progressStroke = Instance.new("UIStroke")
-    progressStroke.Thickness = 4
-    progressStroke.Color = Color3.fromRGB(80, 140, 200)
-    progressStroke.Transparency = 0.3
-    progressStroke.Parent = progressCircle
-
-    local progressFill = Instance.new("ImageLabel")
-    progressFill.Size = UDim2.new(1, 0, 1, 0)
-    progressFill.BackgroundTransparency = 1
-    progressFill.Image = "rbxassetid://5028857472"
-    progressFill.ImageColor3 = Color3.fromRGB(80, 140, 200)
-    progressFill.ImageTransparency = 0.7
-    progressFill.Parent = progressCircle
-
-    local gradientFill = Instance.new("UIGradient")
-    gradientFill.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 160, 250)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 120, 200))
-    })
-    gradientFill.Rotation = 45
-    gradientFill.Parent = progressFill
-
-    -- Частицы внутри круга
-    local particleEffect = Instance.new("ImageLabel")
-    particleEffect.Size = UDim2.new(0.8, 0, 0.8, 0)
-    particleEffect.Position = UDim2.new(0.5, 0, 0.5, 0)
-    particleEffect.AnchorPoint = Vector2.new(0.5, 0.5)
-    particleEffect.BackgroundTransparency = 1
-    particleEffect.Image = "rbxassetid://243098098"
-    particleEffect.ImageColor3 = Color3.fromRGB(150, 200, 255)
-    particleEffect.ImageTransparency = 0.5
-    particleEffect.Parent = progressCircle
-
-    local particleTween = TweenService:Create(particleEffect, TweenInfo.new(5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {Rotation = 360})
-    particleTween:Play()
-
-    -- Текст "Loading..." с пульсацией
-    local loadingLabel = Instance.new("TextLabel")
-    loadingLabel.Size = UDim2.new(0, 100, 0, 30)
-    loadingLabel.Position = UDim2.new(0.5, -50, 0.5, -15)
-    loadingLabel.BackgroundTransparency = 1
-    loadingLabel.Text = "Loading..."
-    loadingLabel.TextColor3 = Color3.fromRGB(200, 220, 255)
-    loadingLabel.TextSize = 20
-    loadingLabel.Font = Enum.Font.GothamBold
-    loadingLabel.TextTransparency = 0
-    loadingLabel.Parent = progressCircle
-
-    local pulseTween = TweenService:Create(loadingLabel, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {TextTransparency = 0.5})
-    pulseTween:Play()
-
-    local percentLabel = Instance.new("TextLabel")
-    percentLabel.Size = UDim2.new(0, 200, 0, 50)
-    percentLabel.Position = UDim2.new(0.5, -100, 0.75, -25)
-    percentLabel.BackgroundTransparency = 1
-    percentLabel.Text = "0%"
-    percentLabel.TextColor3 = Color3.fromRGB(200, 220, 255)
-    percentLabel.TextSize = 24
-    percentLabel.Font = Enum.Font.GothamBold
-    percentLabel.TextTransparency = 0
-    percentLabel.Parent = loaderFrame
-
-    local function updateLoader(progress)
-        local angle = math.rad(360 * (progress / 100))
-        progressFill.Rotation = angle
-        percentLabel.Text = math.floor(progress) .. "%"
-        
-        local tween = TweenService:Create(percentLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0.2})
-        tween:Play()
-        tween.Completed:Connect(function()
-            local tweenBack = TweenService:Create(percentLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0})
-            tweenBack:Play()
-        end)
+-- Проверка на повторный инжект лоадера
+if getgenv().VeryUpLoaderInjected then
+    showNotification("Error: Loader is already injected!", true)
+    if game.CoreGui:FindFirstChild("LoaderGui") then
+        game.CoreGui.LoaderGui:Destroy()
     end
-
-    local function hideLoader(callback)
-        local fadeOut = TweenService:Create(loaderFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 1})
-        fadeOut:Play()
-        fadeOut.Completed:Connect(function()
-            loaderGui:Destroy()
-            if callback then callback() end
-        end)
-    end
-
-    return updateLoader, hideLoader
+    return
 end
 
-return createLoader
+-- Устанавливаем флаг инжекта лоадера
+getgenv().VeryUpLoaderInjected = true
+
+-- Проверка GameId
+if game.GameId ~= 5369242581 then
+    showNotification("This game is not supported!", true)
+    if game.CoreGui:FindFirstChild("LoaderGui") then
+        game.CoreGui.LoaderGui:Destroy()
+    end
+    return
+end
+
+-- Реальная загрузка ReGui
+local progress = 0
+updateLoader(progress)
+
+local ReGui, PrefabsId
+local success, errorMsg = pcall(function()
+    ReGui = loadstring(game:HttpGet('https://raw.githubusercontent.com/depthso/Dear-ReGui/refs/heads/main/ReGui.lua'))()
+    PrefabsId = "rbxassetid://" .. ReGui.PrefabsId
+end)
+
+if not success then
+    warn("Failed to load ReGui: " .. errorMsg)
+    if game.CoreGui:FindFirstChild("LoaderGui") then
+        game.CoreGui.LoaderGui:Destroy()
+    end
+    return
+end
+
+-- Имитация прогресса загрузки
+local totalSteps = 20
+local step = 100 / totalSteps
+local currentStep = 0
+
+coroutine.wrap(function()
+    while currentStep < totalSteps do
+        wait(0.1)
+        currentStep = currentStep + 1
+        progress = math.min(currentStep * step, 100)
+        updateLoader(progress)
+    end
+
+    -- Загрузка UI после достижения 100%
+    local InsertService = game:GetService("InsertService")
+    ReGui:Init({
+        Prefabs = InsertService:LoadLocalAsset(PrefabsId)
+    })
+
+    -- Основное окно с вкладками
+    local TabsWindow = ReGui:TabsWindow({
+        Title = "Чит для Roblox",
+        Size = UDim2.fromOffset(400, 300),
+        NoScroll = true
+    })
+
+    local VisualTab = TabsWindow:CreateTab({Name = "Visual"})
+    local CombatTab = TabsWindow:CreateTab({Name = "Combat"})
+    local MiscTab = TabsWindow:CreateTab({Name = "Misc"})
+    local SettingsTab = TabsWindow:CreateTab({Name = "Settings"})
+
+    -- Экспортируем вкладки для использования в скриптах
+    getgenv().VisualTab = VisualTab
+    getgenv().CombatTab = CombatTab
+    getgenv().MiscTab = MiscTab
+    getgenv().SettingsTab = SettingsTab
+    getgenv().RunService = RunService
+
+    -- Загрузка ESP через GitHub
+    local esp = loadstring(game:HttpGet("https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/VeryUpESP"))()
+    esp:Load()
+
+    -- Загрузка Combat через GitHub
+    local combat = loadstring(game:HttpGet("https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/VeryUpCombat"))()
+
+    -- Установка флага инжекта
+    getgenv().VeryUpInjected = true
+
+    -- Исчезновение лоадера и показ уведомлений
+    hideLoader(function()
+        showNotification("Success! Your username: " .. LocalPlayer.Name, false)
+        showNotification("Success! You are in game: " .. MarketplaceService:GetProductInfo(game.PlaceId).Name, false)
+        showNotification("Success: VeryUp Cheat has been injected!", false)
+    end)
+end)()
