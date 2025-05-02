@@ -16,7 +16,7 @@ local ESPSettings = {
 	BoxColor = Color3.fromRGB(255, 0, 0),
 	VisibilityMode = "None", -- None, All, Team, Enemy
 	VisibleCheck = false,
-	VisibilityStyle = "Default", -- Изменено на Default по умолчанию
+	VisibilityStyle = "Default", -- Default по умолчанию
 	VisibilityDefaultColor = Color3.fromRGB(0, 0, 255), -- Синий по умолчанию
 	Name = false,
 	NameColor = Color3.fromRGB(255, 255, 255),
@@ -363,7 +363,7 @@ local function updateESP(player)
 	end
 
 	local distanceY = math.clamp((Vector2.new(headPos.X, headPos.Y) - Vector2.new(humPos.X, humPos.Y)).Magnitude, 2, math.huge)
-	local isVisibleWall = isVisibleThroughWall(character)
+	local isVisibleWall = ESPSettings.VisibleCheck and isVisibleThroughWall(character) or true
 
 	-- Box (2D)
 	if ESPSettings.Box and ESPSettings.BoxType == "2D" then
@@ -378,10 +378,11 @@ local function updateESP(player)
 				quad.PointD = Vector2.new(humPos.X + distanceY, humPos.Y + distanceY * 2)
 			end
 			setBoxPoints(objects.Box)
-			objects.Box.Visible = true
 			if ESPSettings.VisibilityStyle == "Smart" then
-				objects.Box.Color = ESPSettings.BoxColor -- Бокс не меняет цвет
+				objects.Box.Visible = true -- Smart работает всегда
+				objects.Box.Color = ESPSettings.BoxColor
 			else -- Default
+				objects.Box.Visible = ESPSettings.VisibleCheck and isVisibleWall -- Default работает только с VisibleCheck
 				objects.Box.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
 			end
 		elseif ESPSettings.BoxStyle == "Modern" then
@@ -426,10 +427,11 @@ local function updateESP(player)
 
 			for key, line in pairs(objects.BoxCorners) do
 				line.Thickness = ESPSettings.BoxThickness
-				line.Visible = true
 				if ESPSettings.VisibilityStyle == "Smart" then
-					line.Color = ESPSettings.BoxColor -- Бокс не меняет цвет
+					line.Visible = true -- Smart работает всегда
+					line.Color = ESPSettings.BoxColor
 				else -- Default
+					line.Visible = ESPSettings.VisibleCheck and isVisibleWall -- Default работает только с VisibleCheck
 					line.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
 				end
 			end
@@ -444,10 +446,11 @@ local function updateESP(player)
 				end
 			end
 			if objects.Box3D then
-				objects.Box3D.Visible = true
 				if ESPSettings.VisibilityStyle == "Smart" then
-					objects.Box3D.Color3 = ESPSettings.BoxColor -- Бокс не меняет цвет
+					objects.Box3D.Visible = true -- Smart работает всегда
+					objects.Box3D.Color3 = ESPSettings.BoxColor
 				else -- Default
+					objects.Box3D.Visible = ESPSettings.VisibleCheck and isVisibleWall -- Default работает только с VisibleCheck
 					objects.Box3D.Color3 = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
 				end
 			end
@@ -489,10 +492,11 @@ local function updateESP(player)
 					line.From = Vector2.new(pos1.X, pos1.Y)
 					line.To = Vector2.new(pos2.X, pos2.Y)
 					line.Thickness = ESPSettings.BoxThickness
-					line.Visible = true
 					if ESPSettings.VisibilityStyle == "Smart" then
-						line.Color = ESPSettings.BoxColor -- Бокс не меняет цвет
+						line.Visible = true -- Smart работает всегда
+						line.Color = ESPSettings.BoxColor
 					else -- Default
+						line.Visible = ESPSettings.VisibleCheck and isVisibleWall -- Default работает только с VisibleCheck
 						line.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
 					end
 				else
