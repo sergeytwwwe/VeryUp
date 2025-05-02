@@ -14,10 +14,7 @@ local ESPSettings = {
 	BoxStyle = "Default",
 	Box3DStyle = "Fill",
 	BoxColor = Color3.fromRGB(255, 0, 0),
-	CheckAll = false,
-	CheckTeam = false,
-	CheckEnemy = false,
-	CheckNone = true,
+	VisibilityMode = "None", -- None, All, Team, Enemy
 	VisibleCheck = false,
 	VisibilityStyle = "Default", -- Smart, Default
 	VisibilityDefaultColor = Color3.fromRGB(0, 0, 255), -- Синий по умолчанию
@@ -298,7 +295,7 @@ local function isVisibleThroughWall(character)
 	local ray = Ray.new(origin, direction)
 	local ignoreList = {LocalPlayer.Character, character}
 	local part, _ = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList)
-	return not part or part:IsDescendantOf(character)
+	return not part or (part and part:IsDescendantOf(character))
 end
 
 -- Обновление ESP для игрока
@@ -327,16 +324,11 @@ local function updateESP(player)
 	local distance = (LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart and (rootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude) or math.huge
 
 	-- Проверка на кого показывать ESP
-	if ESPSettings.CheckNone then
+	if ESPSettings.VisibilityMode == "None" then
 		return
-	end
-	if ESPSettings.CheckTeam and player.Team ~= LocalPlayer.Team then
+	elseif ESPSettings.VisibilityMode == "Team" and player.Team ~= LocalPlayer.Team then
 		return
-	end
-	if ESPSettings.CheckEnemy and player.Team == LocalPlayer.Team then
-		return
-	end
-	if not ESPSettings.CheckAll and not ESPSettings.CheckTeam and not ESPSettings.CheckEnemy then
+	elseif ESPSettings.VisibilityMode == "Enemy" and player.Team == LocalPlayer.Team then
 		return
 	end
 
@@ -345,15 +337,12 @@ local function updateESP(player)
 	end
 
 	local humPos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
-	local screenSize = Camera.ViewportSize
-	local isVisible = onScreen and humPos.X >= 0 and humPos.X <= screenSize.X and humPos.Y >= 0 and humPos.Y <= screenSize.Y and humPos.Z > 0
-
-	if not isVisible then
+	if not onScreen or humPos.Z < 0 then
 		return
 	end
 
 	local headPos, headOnScreen = Camera:WorldToViewportPoint(character:FindFirstChild("Head") and character.Head.Position or rootPart.Position)
-	if not headOnScreen then
+	if not headOnScreen or headPos.Z < 0 then
 		return
 	end
 
@@ -603,8 +592,8 @@ local function updateESP(player)
 				if part1 and part2 then
 					local pos1, vis1 = Camera:WorldToViewportPoint(part1.Position)
 					local pos2, vis2 = Camera:WorldToViewportPoint(part2.Position)
-					local pos1Visible = vis1 and pos1.X >= 0 and pos1.X <= screenSize.X and pos1.Y >= 0 and pos1.Y <= screenSize.Y and pos1.Z > 0
-					local pos2Visible = vis2 and pos2.X >= 0 and pos2.X <= screenSize.X and pos2.Y >= 0 and pos2.Y <= screenSize.Y and pos2.Z > 0
+					local pos1Visible = vis1 and pos1.Z > 0
+					local pos2Visible = vis2 and pos2.Z > 0
 					if pos1Visible and pos2Visible then
 						line.From = Vector2.new(pos1.X, pos1.Y)
 						line.To = Vector2.new(pos2.X, pos2.Y)
@@ -641,7 +630,7 @@ local function updateESP(player)
 	end
 
 	-- Visible Check
-	if ESPSettings.VisibleCheck and ESPSettings.VisibilityStyle == "Smart" then
+	if ESPSettings.VisibleCheck then
 		if not objects.Eye then
 			objects.Eye = NewEye()
 		end
@@ -774,78 +763,13 @@ function ESP:Load()
 		Box3DStyleCombo.Visible = ESPSettings.BoxType == "3D"
 	end)
 
-	VisualTab:Separator({Text = "Show ESP On"})
-	VisualTab:Checkbox({
-		IniFlag = "ESP_CheckAll",
-		Label = "Check All",
-		Value = ESPSettings.CheckAll,
+	VisualTab:Combo({
+		IniFlag = "ESP_VisibilityMode",
+		Label = "Show ESP On",
+		Selected = ESPSettings.VisibilityMode,
+		Items = {"None", "All", "Team", "Enemy"},
 		Callback = function(self, value)
-			ESPSettings.CheckAll = value
-			if value then
-				ESPSettings.CheckTeam = false
-				ESPSettings.CheckEnemy = false
-				ESPSettings.CheckNone = false
-			end
-			for _, player in ipairs(Players:GetPlayers()) do
-				if ESPObjects[player] then
-					hideAllObjects(ESPObjects[player])
-				end
-				updateESP(player)
-			end
-		end
-	})
-
-	VisualTab:Checkbox({
-		IniFlag = "ESP_CheckTeam",
-		Label = "Check Team",
-		Value = ESPSettings.CheckTeam,
-		Callback = function(self, value)
-			ESPSettings.CheckTeam = value
-			if value then
-				ESPSettings.CheckAll = false
-				ESPSettings.CheckEnemy = false
-				ESPSettings.CheckNone = false
-			end
-			for _, player in ipairs(Players:GetPlayers()) do
-				if ESPObjects[player] then
-					hideAllObjects(ESPObjects[player])
-				end
-				updateESP(player)
-			end
-		end
-	})
-
-	VisualTab:Checkbox({
-		IniFlag = "ESP_CheckEnemy",
-		Label = "Check Enemy",
-		Value = ESPSettings.CheckEnemy,
-		Callback = function(self, value)
-			ESPSettings.CheckEnemy = value
-			if value then
-				ESPSettings.CheckAll = false
-				ESPSettings.CheckTeam = false
-				ESPSettings.CheckNone = false
-			end
-			for _, player in ipairs(Players:GetPlayers()) do
-				if ESPObjects[player] then
-					hideAllObjects(ESPObjects[player])
-				end
-				updateESP(player)
-			end
-		end
-	})
-
-	VisualTab:Checkbox({
-		IniFlag = "ESP_CheckNone",
-		Label = "Check None",
-		Value = ESPSettings.CheckNone,
-		Callback = function(self, value)
-			ESPSettings.CheckNone = value
-			if value then
-				ESPSettings.CheckAll = false
-				ESPSettings.CheckTeam = false
-				ESPSettings.CheckEnemy = false
-			end
+			ESPSettings.VisibilityMode = value
 			for _, player in ipairs(Players:GetPlayers()) do
 				if ESPObjects[player] then
 					hideAllObjects(ESPObjects[player])
