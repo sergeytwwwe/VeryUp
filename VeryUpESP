@@ -16,7 +16,7 @@ local ESPSettings = {
 	BoxColor = Color3.fromRGB(255, 0, 0),
 	VisibilityMode = "None", -- None, All, Team, Enemy
 	VisibleCheck = false,
-	VisibilityStyle = "Default", -- Smart, Default
+	VisibilityStyle = "Smart", -- Изменено на Smart по умолчанию
 	VisibilityDefaultColor = Color3.fromRGB(0, 0, 255), -- Синий по умолчанию
 	Name = false,
 	NameColor = Color3.fromRGB(255, 255, 255),
@@ -291,10 +291,10 @@ local function isVisibleThroughWall(character)
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
 	local origin = Camera.CFrame.Position
 	local target = character.HumanoidRootPart.Position
-	local direction = (target - origin).Unit * 1000
+	local direction = (target - origin).Unit * (target - origin).Magnitude + 10 -- Добавляем небольшой буфер
 	local ray = Ray.new(origin, direction)
-	local ignoreList = {LocalPlayer.Character, character}
-	local part, _ = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList)
+	local ignoreList = {LocalPlayer.Character, character, workspace.Terrain}
+	local part, _ = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList, false, true)
 	return not part or (part and part:IsDescendantOf(character))
 end
 
@@ -800,7 +800,7 @@ function ESP:Load()
 			ESPSettings.VisibilityStyle = value
 			for _, player in ipairs(Players:GetPlayers()) do
 				if ESPObjects[player] then
-					hideAllObjects(ESPObjects[player])
+					hideAllObjects(ESPObjects[player]) -- Полное скрытие перед обновлением
 				end
 				updateESP(player)
 			end
