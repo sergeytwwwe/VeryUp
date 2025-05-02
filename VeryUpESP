@@ -369,6 +369,9 @@ local function updateESP(player)
 	local distanceY = math.clamp((Vector2.new(headPos.X, headPos.Y) - Vector2.new(humPos.X, humPos.Y)).Magnitude, 2, math.huge)
 	local isVisibleWall = isVisibleThroughWall(character)
 
+	-- Управление видимостью всех элементов ESP
+	local isVisibleESP = (ESPSettings.VisibilityStyle == "VisibleOnly" and isVisibleWall) or (ESPSettings.VisibilityStyle ~= "VisibleOnly")
+
 	-- Box (2D)
 	if ESPSettings.Box and ESPSettings.BoxType == "2D" then
 		if ESPSettings.BoxStyle == "Default" then
@@ -383,10 +386,10 @@ local function updateESP(player)
 			end
 			setBoxPoints(objects.Box)
 			if ESPSettings.VisibilityStyle == "Smart" then
-				objects.Box.Visible = true
+				objects.Box.Visible = isVisibleESP
 				objects.Box.Color = ESPSettings.BoxColor
 			elseif ESPSettings.VisibilityStyle == "Default" then
-				objects.Box.Visible = true
+				objects.Box.Visible = isVisibleESP
 				objects.Box.Color = ESPSettings.VisibleCheck and (isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor) or ESPSettings.BoxColor
 			elseif ESPSettings.VisibilityStyle == "VisibleOnly" then
 				objects.Box.Visible = isVisibleWall
@@ -435,10 +438,10 @@ local function updateESP(player)
 			for key, line in pairs(objects.BoxCorners) do
 				line.Thickness = ESPSettings.BoxThickness
 				if ESPSettings.VisibilityStyle == "Smart" then
-					line.Visible = true
+					line.Visible = isVisibleESP
 					line.Color = ESPSettings.BoxColor
 				elseif ESPSettings.VisibilityStyle == "Default" then
-					line.Visible = true
+					line.Visible = isVisibleESP
 					line.Color = ESPSettings.VisibleCheck and (isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor) or ESPSettings.BoxColor
 				elseif ESPSettings.VisibilityStyle == "VisibleOnly" then
 					line.Visible = isVisibleWall
@@ -457,10 +460,10 @@ local function updateESP(player)
 			end
 			if objects.Box3D then
 				if ESPSettings.VisibilityStyle == "Smart" then
-					objects.Box3D.Visible = true
+					objects.Box3D.Visible = isVisibleESP
 					objects.Box3D.Color3 = ESPSettings.BoxColor
 				elseif ESPSettings.VisibilityStyle == "Default" then
-					objects.Box3D.Visible = true
+					objects.Box3D.Visible = isVisibleESP
 					objects.Box3D.Color3 = ESPSettings.VisibleCheck and (isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor) or ESPSettings.BoxColor
 				elseif ESPSettings.VisibilityStyle == "VisibleOnly" then
 					objects.Box3D.Visible = isVisibleWall
@@ -506,10 +509,10 @@ local function updateESP(player)
 					line.To = Vector2.new(pos2.X, pos2.Y)
 					line.Thickness = ESPSettings.BoxThickness
 					if ESPSettings.VisibilityStyle == "Smart" then
-						line.Visible = true
+						line.Visible = isVisibleESP
 						line.Color = ESPSettings.BoxColor
 					elseif ESPSettings.VisibilityStyle == "Default" then
-						line.Visible = true
+						line.Visible = isVisibleESP
 						line.Color = ESPSettings.VisibleCheck and (isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor) or ESPSettings.BoxColor
 					elseif ESPSettings.VisibilityStyle == "VisibleOnly" then
 						line.Visible = isVisibleWall
@@ -530,7 +533,7 @@ local function updateESP(player)
 		objects.Name.Text = player.Name
 		objects.Name.Position = Vector2.new(humPos.X, humPos.Y - distanceY * 2 - 20)
 		objects.Name.Color = ESPSettings.NameColor
-		objects.Name.Visible = true
+		objects.Name.Visible = ESPSettings.Name and isVisibleESP
 	else
 		if objects.Name then
 			objects.Name.Visible = false
@@ -552,17 +555,19 @@ local function updateESP(player)
 		local healthColor = Color3.fromRGB(255 * (1 - healthPercent), 255 * healthPercent, 0)
 		local d = (Vector2.new(humPos.X - distanceY, humPos.Y - distanceY * 2) - Vector2.new(humPos.X - distanceY, humPos.Y + distanceY * 2)).Magnitude
 		local healthOffset = healthPercent * d
-		objects.HealthBar.From = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2)
-		objects.HealthBar.To = Vector2.new(humPos.X - distanceY - 4, humPos.Y - distanceY * 2)
-		objects.HealthBar.Visible = true
-		objects.HealthGreen.From = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2)
-		objects.BoxGreen.To = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2 - healthOffset)
-		objects.HealthGreen.Color = healthColor
-		objects.HealthGreen.Visible = true
-		objects.HealthText.Text = tostring(math.floor(humanoid.Health))
-		objects.HealthText.Position = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2 + 15)
-		objects.HealthText.Color = ESPSettings.HealthColor
-		objects.HealthText.Visible = true
+		if objects.HealthBar and objects.HealthGreen and objects.HealthText then
+			objects.HealthBar.From = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2)
+			objects.HealthBar.To = Vector2.new(humPos.X - distanceY - 4, humPos.Y - distanceY * 2)
+			objects.HealthBar.Visible = ESPSettings.Health and isVisibleESP
+			objects.HealthGreen.From = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2)
+			objects.HealthGreen.To = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2 - healthOffset)
+			objects.HealthGreen.Color = healthColor
+			objects.HealthGreen.Visible = ESPSettings.Health and isVisibleESP
+			objects.HealthText.Text = tostring(math.floor(humanoid.Health))
+			objects.HealthText.Position = Vector2.new(humPos.X - distanceY - 4, humPos.Y + distanceY * 2 + 15)
+			objects.HealthText.Color = ESPSettings.HealthColor
+			objects.HealthText.Visible = ESPSettings.Health and isVisibleESP
+		end
 	else
 		if objects.HealthBar then
 			objects.HealthBar.Visible = false
@@ -584,7 +589,7 @@ local function updateESP(player)
 		local offset = ESPSettings.Health and 30 or 15
 		objects.Distance.Position = Vector2.new(humPos.X, humPos.Y + distanceY * 2 + offset)
 		objects.Distance.Color = ESPSettings.DistanceColor
-		objects.Distance.Visible = true
+		objects.Distance.Visible = ESPSettings.Distance and isVisibleESP
 	else
 		if objects.Distance then
 			objects.Distance.Visible = false
@@ -622,26 +627,28 @@ local function updateESP(player)
 				{"RightLowerLeg", "RightFoot"}
 			}
 		}
-		for _, pair in ipairs(connections[rigType]) do
-			local line = objects.Skeleton[pair[1] .. "_" .. pair[2]]
-			if line then
-				local part1 = character:FindFirstChild(pair[1])
-				local part2 = character:FindFirstChild(pair[2])
-				if part1 and part2 then
-					local pos1, vis1 = Camera:WorldToViewportPoint(part1.Position)
-					local pos2, vis2 = Camera:WorldToViewportPoint(part2.Position)
-					local pos1Visible = vis1 and pos1.Z > 0
-					local pos2Visible = vis2 and pos2.Z > 0
-					if pos1Visible and pos2Visible then
-						line.From = Vector2.new(pos1.X, pos1.Y)
-						line.To = Vector2.new(pos2.X, pos2.Y)
-						line.Color = ESPSettings.SkeletonColor
-						line.Visible = true
+		if objects.Skeleton then
+			for _, pair in ipairs(connections[rigType]) do
+				local line = objects.Skeleton[pair[1] .. "_" .. pair[2]]
+				if line then
+					local part1 = character:FindFirstChild(pair[1])
+					local part2 = character:FindFirstChild(pair[2])
+					if part1 and part2 then
+						local pos1, vis1 = Camera:WorldToViewportPoint(part1.Position)
+						local pos2, vis2 = Camera:WorldToViewportPoint(part2.Position)
+						local pos1Visible = vis1 and pos1.Z > 0
+						local pos2Visible = vis2 and pos2.Z > 0
+						if pos1Visible and pos2Visible then
+							line.From = Vector2.new(pos1.X, pos1.Y)
+							line.To = Vector2.new(pos2.X, pos2.Y)
+							line.Color = ESPSettings.SkeletonColor
+							line.Visible = ESPSettings.Skeleton and isVisibleESP
+						else
+							line.Visible = false
+						end
 					else
 						line.Visible = false
 					end
-				else
-					line.Visible = false
 				end
 			end
 		end
@@ -658,9 +665,11 @@ local function updateESP(player)
 		if not objects.Chams then
 			objects.Chams = createChams(character)
 		end
-		objects.Chams.FillColor = ESPSettings.ChamsColor
-		objects.Chams.OutlineColor = ESPSettings.ChamsColor
-		objects.Chams.Enabled = true
+		if objects.Chams then
+			objects.Chams.FillColor = ESPSettings.ChamsColor
+			objects.Chams.OutlineColor = ESPSettings.ChamsColor
+			objects.Chams.Enabled = ESPSettings.Chams and isVisibleESP
+		end
 	else
 		if objects.Chams then
 			objects.Chams.Enabled = false
