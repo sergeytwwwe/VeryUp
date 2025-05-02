@@ -286,12 +286,12 @@ local function hideAllObjects(objects)
 	end
 end
 
--- Проверка видимости через стену
+-- Проверка видимости через стену (улучшена для головы)
 local function isVisibleThroughWall(character)
-	if not character or not character:FindFirstChild("HumanoidRootPart") then return false end
+	if not character or not character:FindFirstChild("HumanoidRootPart") or not character:FindFirstChild("Head") then return false end
 	local origin = Camera.CFrame.Position
-	local target = character.HumanoidRootPart.Position
-	local direction = (target - origin).Unit * ((target - origin).Magnitude + 10) -- Исправлено сложение
+	local target = character.Head.Position -- Проверяем видимость головы
+	local direction = (target - origin).Unit * ((target - origin).Magnitude + 10)
 	local ray = Ray.new(origin, direction)
 	local ignoreList = {LocalPlayer.Character, character, workspace.Terrain}
 	local part, _ = workspace:FindPartOnRayWithIgnoreList(ray, ignoreList, false, true)
@@ -321,6 +321,10 @@ local function updateESP(player)
 
 	local rootPart = character.HumanoidRootPart
 	local humanoid = character.Humanoid
+	if humanoid.Health <= 0 then -- Фильтрация мёртвых игроков
+		return
+	end
+
 	local distance = (LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart and (rootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude) or math.huge
 
 	-- Проверка на кого показывать ESP
@@ -801,6 +805,7 @@ function ESP:Load()
 			for _, player in ipairs(Players:GetPlayers()) do
 				if ESPObjects[player] then
 					hideAllObjects(ESPObjects[player]) -- Полное скрытие перед обновлением
+					clearPlayerObjects(player) -- Очистка всех объектов
 				end
 				updateESP(player)
 			end
