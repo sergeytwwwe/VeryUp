@@ -368,10 +368,10 @@ local function updateESP(player)
 			setBoxPoints(objects.Box)
 			if ESPSettings.VisibilityStyle == "Smart" then
 				objects.Box.Color = ESPSettings.BoxColor
-				objects.Box.Visible = true
-			else
+				objects.Box.Visible = isVisibleWall -- Отображаем бокс только если игрок видим
+			else -- Default
 				objects.Box.Color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
-				objects.Box.Visible = true
+				objects.Box.Visible = true -- В Default бокс всегда виден
 			end
 		elseif ESPSettings.BoxStyle == "Modern" then
 			if not objects.BoxCorners then
@@ -417,14 +417,14 @@ local function updateESP(player)
 				for key, line in pairs(objects.BoxCorners) do
 					line.Color = ESPSettings.BoxColor
 					line.Thickness = ESPSettings.BoxThickness
-					line.Visible = true
+					line.Visible = isVisibleWall -- Отображаем углы только если игрок видим
 				end
-			else
+			else -- Default
 				local color = isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor
 				for key, line in pairs(objects.BoxCorners) do
 					line.Color = color
 					line.Thickness = ESPSettings.BoxThickness
-					line.Visible = true
+					line.Visible = true -- В Default углы всегда видны
 				end
 			end
 		end
@@ -438,8 +438,8 @@ local function updateESP(player)
 				end
 			end
 			if objects.Box3D then
-				objects.Box3D.Color3 = ESPSettings.BoxColor
-				objects.Box3D.Visible = true
+				objects.Box3D.Color3 = ESPSettings.VisibilityStyle == "Smart" and ESPSettings.BoxColor or (isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor)
+				objects.Box3D.Visible = ESPSettings.VisibilityStyle == "Smart" and isVisibleWall or true
 			end
 		else -- Default (только линии)
 			if not objects.Box3DDefault or not objects.Box3DSize then
@@ -478,9 +478,9 @@ local function updateESP(player)
 				if vis1 and vis2 then
 					line.From = Vector2.new(pos1.X, pos1.Y)
 					line.To = Vector2.new(pos2.X, pos2.Y)
-					line.Color = ESPSettings.BoxColor
+					line.Color = ESPSettings.VisibilityStyle == "Smart" and ESPSettings.BoxColor or (isVisibleWall and ESPSettings.VisibilityDefaultColor or ESPSettings.BoxColor)
 					line.Thickness = ESPSettings.BoxThickness
-					line.Visible = true
+					line.Visible = ESPSettings.VisibilityStyle == "Smart" and isVisibleWall or true
 				else
 					line.Visible = false
 				end
@@ -633,7 +633,7 @@ local function updateESP(player)
 		end
 	end
 
-	-- Visible Check
+	-- Visible Check (круг отображается только при включённом VisibleCheck)
 	if ESPSettings.VisibleCheck then
 		if not objects.Eye then
 			objects.Eye = NewEye()
@@ -819,16 +819,7 @@ function ESP:Load()
 		Callback = function(self, value)
 			ESPSettings.VisibilityDefaultColor = value
 			for _, player in ipairs(Players:GetPlayers()) do
-				if ESPObjects[player] then
-					if ESPObjects[player].Box then
-						objects.Box.Color = isVisibleThroughWall(player.Character) and value or ESPSettings.BoxColor
-					end
-					if ESPObjects[player].BoxCorners then
-						for key, line in pairs(ESPObjects[player].BoxCorners) do
-							line.Color = isVisibleThroughWall(player.Character) and value or ESPSettings.BoxColor
-						end
-					end
-				end
+				updateESP(player)
 			end
 		end
 	})
@@ -922,24 +913,7 @@ function ESP:Load()
 		Callback = function(self, value)
 			ESPSettings.BoxColor = value
 			for _, player in ipairs(Players:GetPlayers()) do
-				if ESPObjects[player] then
-					if ESPObjects[player].Box then
-						objects.Box.Color = isVisibleThroughWall(player.Character) and ESPSettings.VisibilityDefaultColor or value
-					end
-					if ESPObjects[player].BoxCorners then
-						for key, line in pairs(ESPObjects[player].BoxCorners) do
-							line.Color = isVisibleThroughWall(player.Character) and ESPSettings.VisibilityDefaultColor or value
-						end
-					end
-					if ESPObjects[player].Box3D then
-						ESPObjects[player].Box3D.Color3 = value
-					end
-					if ESPObjects[player].Box3DDefault then
-						for _, line in pairs(ESPObjects[player].Box3DDefault) do
-							line.Color = value
-						end
-					end
-				end
+				updateESP(player)
 			end
 		end
 	})
