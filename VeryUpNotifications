@@ -1,0 +1,130 @@
+-- Notifications.lua: Система управления уведомлениями
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local Camera = workspace.CurrentCamera
+
+-- Хранилище для активных уведомлений
+local activeNotifications = {}
+
+-- Функция для создания и отображения уведомления
+local function showNotification(message, isError)
+    local notificationGui = Instance.new("ScreenGui")
+    notificationGui.Name = isError and "InjectErrorGui" or "InjectSuccessGui"
+    notificationGui.Parent = CoreGui
+    notificationGui.IgnoreGuiInset = true
+
+    local notificationFrame = Instance.new("Frame")
+    notificationFrame.Size = UDim2.new(0, 450, 0, 80)
+    notificationFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    notificationFrame.BackgroundTransparency = 1
+    notificationFrame.BorderSizePixel = 0
+    notificationFrame.Parent = notificationGui
+
+    local notificationCorner = Instance.new("UICorner")
+    notificationCorner.CornerRadius = UDim.new(0, 15)
+    notificationCorner.Parent = notificationFrame
+
+    local icon = Instance.new("TextLabel")
+    icon.Size = UDim2.new(0, 40, 0, 40)
+    icon.Position = UDim2.new(0, 20, 0.5, -20)
+    icon.BackgroundTransparency = 1
+    icon.Text = isError and "!" or "✓"
+    icon.TextColor3 = isError and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(0, 255, 0)
+    icon.TextSize = 40
+    icon.Font = Enum.Font.GothamBlack
+    icon.TextTransparency = 1
+    icon.Parent = notificationFrame
+
+    local messageLabel = Instance.new("TextLabel")
+    messageLabel.Size = UDim2.new(0, 360, 0, 40)
+    messageLabel.Position = UDim2.new(0, 70, 0.5, -20)
+    messageLabel.BackgroundTransparency = 1
+    messageLabel.Text = message
+    messageLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+    messageLabel.TextSize = 16
+    messageLabel.Font = Enum.Font.Gotham
+    messageLabel.TextTransparency = 1
+    messageLabel.TextXAlignment = Enum.TextXAlignment.Left
+    messageLabel.Parent = notificationFrame
+
+    local progressBar = Instance.new("Frame")
+    progressBar.Size = UDim2.new(1, -20, 0, 8)
+    progressBar.Position = UDim2.new(0, 10, 1, -18)
+    progressBar.BackgroundTransparency = 1
+    progressBar.BorderSizePixel = 0
+    progressBar.Parent = notificationFrame
+
+    local progressFill = Instance.new("Frame")
+    progressFill.Size = UDim2.new(1, 0, 1, 0)
+    progressFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    progressFill.BackgroundTransparency = 0.6
+    progressFill.BorderSizePixel = 0
+    progressFill.Parent = progressBar
+
+    local progressCorner = Instance.new("UICorner")
+    progressCorner.CornerRadius = UDim.new(0, 4)
+    progressCorner.Parent = progressFill
+
+    local progressStroke = Instance.new("UIStroke")
+    progressStroke.Thickness = 0.5
+    progressStroke.Color = Color3.fromRGB(80, 130, 200)
+    progressStroke.Transparency = 0.7
+    progressStroke.Parent = progressFill
+
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(80, 130, 200)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 90, 160))
+    })
+    gradient.Rotation = 45
+    gradient.Parent = progressFill
+
+    local baseYPosition = 0.55
+    local totalOffset = #activeNotifications * (notificationFrame.Size.Y.Offset / Camera.ViewportSize.Y)
+    notificationFrame.Position = UDim2.new(0.5, -225, baseYPosition - totalOffset, 0)
+
+    table.insert(activeNotifications, {Gui = notificationGui, Frame = notificationFrame})
+
+    local frameTweenIn = TweenService:Create(notificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.1})
+    local iconTweenIn = TweenService:Create(icon, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0})
+    local messageLabelTweenIn = TweenService:Create(messageLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0})
+
+    frameTweenIn:Play()
+    iconTweenIn:Play()
+    messageLabelTweenIn:Play()
+
+    local progressTween = TweenService:Create(progressFill, TweenInfo.new(3, Enum.EasingStyle.Linear), {Size = UDim2.new(0, 0, 1, 0)})
+    progressTween:Play()
+
+    wait(3)
+
+    local frameTweenOut = TweenService:Create(notificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {BackgroundTransparency = 1})
+    local iconTweenOut = TweenService:Create(icon, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1})
+    local messageLabelTweenOut = TweenService:Create(messageLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1})
+
+    frameTweenOut:Play()
+    iconTweenOut:Play()
+    messageLabelTweenOut:Play()
+
+    wait(0.5)
+
+    for i, activeNotif in ipairs(activeNotifications) do
+        if activeNotif.Gui == notificationGui then
+            table.remove(activeNotifications, i)
+            break
+        end
+    end
+
+    local newOffset = 0
+    for i, activeNotif in ipairs(activeNotifications) do
+        if activeNotif.Frame and activeNotif.Frame.Parent then
+            local tween = TweenService:Create(activeNotif.Frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -225, baseYPosition - (newOffset / Camera.ViewportSize.Y), 0)})
+            tween:Play()
+            newOffset = newOffset + activeNotif.Frame.Size.Y.Offset
+        end
+    end
+
+    notificationGui:Destroy()
+end
+
+return showNotification
