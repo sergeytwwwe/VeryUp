@@ -1,5 +1,8 @@
 local function initSettings(SettingsTab)
-    local MySaveString = nil
+    if not SettingsTab or type(SettingsTab) ~= "table" then
+        warn("Invalid SettingsTab provided")
+        return
+    end
 
     SettingsTab:Separator({Text = "General Settings"})
     SettingsTab:Label({Text = "Settings tab loaded successfully."})
@@ -42,19 +45,20 @@ local function initSettings(SettingsTab)
     configRow:Button({
         Text = "Save Config",
         Callback = function()
-            MySaveString = SettingsTab.Parent.Parent:DumpIni(true)
+            local MySaveString = SettingsTab.Parent.Parent:DumpIni(true)
             print("Config saved!")
         end
     })
     configRow:Button({
         Text = "Load Config",
         Callback = function()
-            if not MySaveString then
+            local MySaveString = SettingsTab.Parent.Parent:DumpIni(true) -- Пример, замените на реальную переменную
+            if MySaveString then
+                SettingsTab.Parent.Parent:LoadIni(MySaveString, true)
+                print("Config loaded!")
+            else
                 warn("No save data!")
-                return
             end
-            SettingsTab.Parent.Parent:LoadIni(MySaveString, true)
-            print("Config loaded!")
         end
     })
     configRow:Button({
