@@ -1,0 +1,333 @@
+-- loader.lua: Основной загрузчик
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local InsertService = game:GetService("InsertService")
+
+-- Попытка загрузки VeryUpNotifications
+local showNotification
+local notifSuccess, notifError = pcall(function()
+    showNotification = loadstring(game:HttpGet("https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/VeryUpNotifications"))()
+end)
+if not notifSuccess then
+    warn("Failed to load VeryUpNotifications: " .. notifError)
+    showNotification = function(message, isError)
+        if isError then
+            warn("[Notification] " .. message)
+        else
+            print("[Notification] " .. message)
+        end
+    end
+end
+
+-- Попытка загрузки VeryUpLoadingScreen
+local updateLoader, hideLoader
+local loaderSuccess, loaderError = pcall(function()
+    local createLoader = loadstring(game:HttpGet("https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/VeryUpLoadingScreen"))()
+    if createLoader then
+        updateLoader, hideLoader = createLoader()
+    else
+        warn("createLoader returned nil")
+    end
+end)
+if not loaderSuccess or not updateLoader or not hideLoader then
+    warn("Failed to load or initialize VeryUpLoadingScreen: " .. (loaderError or "No functions returned"))
+    updateLoader = function(progress) print("Loader progress: " .. (progress or 0) .. "%") end
+    hideLoader = function(callback) if callback then callback() end end
+end
+
+-- Проверка на повторный инжект
+if getgenv().VeryUpLoaderInjected then
+    showNotification("Error: Loader is already injected!", true)
+    hideLoader()
+    return
+end
+getgenv().VeryUpLoaderInjected = true
+
+-- Проверка GameId
+if game.GameId ~= 5369242581 then
+    showNotification("This game is not supported!", true)
+    hideLoader()
+    return
+end
+
+-- Начало загрузки с лоадером
+local progress = 0
+updateLoader(progress)
+
+local co = coroutine.create(function()
+    -- Шаг 1: Загрузка ReGui
+    local ReGui, PrefabsId
+    local success, errorMsg = pcall(function()
+        ReGui = loadstring(game:HttpGet('https://raw.githubusercontent.com/depthso/Dear-ReGui/refs/heads/main/ReGui.lua'))()
+        PrefabsId = "rbxassetid://" .. ReGui.PrefabsId
+    end)
+    if not success then
+        warn("Failed to load ReGui: " .. errorMsg)
+        showNotification("Failed to load ReGui: " .. errorMsg, true)
+        hideLoader()
+        return
+    end
+    progress = 25
+    updateLoader(progress)
+
+    -- Шаг 2: Инициализация ReGui
+    local initSuccess, initError = pcall(function()
+        ReGui:Init({
+            Prefabs = InsertService:LoadLocalAsset(PrefabsId)
+        })
+    end)
+    if not initSuccess then
+        warn("Failed to initialize ReGui: " .. initError)
+        showNotification("Failed to initialize ReGui: " .. initError, true)
+        hideLoader()
+        return
+    end
+    progress = 50
+    updateLoader(progress)
+
+    -- Шаг 3: Создание вкладок
+    local TabsWindow
+    local windowSuccess, windowError = pcall(function()
+        TabsWindow = ReGui:TabsWindow({
+            Title = "Very Up",
+            Size = UDim2.fromOffset(400, 300),
+            NoScroll = true,
+            Visible = false
+        })
+        if TabsWindow then
+            TabsWindow.Parent = PlayerGui
+        end
+    end)
+    if not windowSuccess then
+        warn("Failed to create TabsWindow: " .. windowError)
+        showNotification("Failed to create TabsWindow: " .. windowError, true)
+        hideLoader()
+        return
+    end
+    progress = 75
+    updateLoader(progress)
+
+    -- Шаг 4: Создание вкладок
+    local VisualTab = TabsWindow:CreateTab({Name = "Visual"})
+    local CombatTab = TabsWindow:CreateTab({Name = "Combat"})
+    local MiscTab = TabsWindow:CreateTab({Name = "Misc"})
+    local SettingsTab = TabsWindow:CreateTab({Name = "Settings"})
+    progress = 90
+    updateLoader(progress)
+
+    -- Экспорт вкладок
+    getgenv().VisualTab = VisualTab
+    getgenv().CombatTab = CombatTab
+    getgenv().MiscTab = MiscTab
+    getgenv().SettingsTab = SettingsTab
+    getgenv().RunService = RunService
+
+    -- Шаг 5: Загрузка ESP
+    local espSuccess, espError = pcall(function()
+        local esp = loadstring(game:HttpGet("https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/VeryUpESP"))()
+        esp:Load()
+    end)
+    if not espSuccess then
+        warn("Failed to load ESP: " .. espError)
+        showNotification("Failed to load ESP: " .. espError, true)
+    end
+    wait(0.1)
+
+    -- Шаг 6: Загрузка Combat
+    local combatSuccess, combatError = pcall(function()
+        local combat = loadstring(game:HttpGet("https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/VeryUpCombat"))()
+    end)
+    if not combatSuccess then
+        warn("Failed to load Combat: " .. combatError)
+        showNotification("Failed to load Combat: " .. combatError, true)
+    end
+    wait(0.1)
+
+    -- Шаг 7: Инициализация Misc
+    local miscSuccess, miscError = pcall(function()
+        MiscTab:Label({Text = "Coming Soon"})
+    end)
+    if not miscSuccess then
+        warn("Failed to initialize Misc tab: " .. miscError)
+        showNotification("Failed to initialize Misc tab: " .. miscError, true)
+    end
+
+    -- Шаг 8: Настройки окна и конфиги
+    local baseFolder = "VeryUp"
+    local dogsOfWarFolder = baseFolder .. "/DogsOfWar"
+    local configFolder = dogsOfWarFolder .. "/Config"
+    if not isfolder(baseFolder) then makefolder(baseFolder) end
+    if not isfolder(dogsOfWarFolder) then makefolder(dogsOfWarFolder) end
+    if not isfolder(configFolder) then makefolder(configFolder) end
+
+    local configNameInput = ""
+    local configList = {}
+    local configCombo = nil
+
+    local function updateConfigList()
+        local files = listfiles(configFolder)
+        if not files then
+            warn("listfiles returned nil for folder: " .. configFolder)
+            files = {}
+        end
+        configList = {}
+        for _, file in pairs(files) do
+            local configName = file:match("[^\\/]+%.ini$")
+            if configName then
+                configName = configName:match("^(.+)%.ini$")
+                if configName then
+                    table.insert(configList, configName)
+                    warn("Found config: " .. configName)
+                else
+                    warn("Failed to extract config name from file: " .. file)
+                end
+            else
+                warn("File does not match pattern: " .. file)
+            end
+        end
+        warn("Total configs found: " .. #configList)
+        if configCombo then
+            configCombo.Items = configList
+            if #configList > 0 then
+                configCombo.Selected = configList[1]
+                configNameInput = configList[1]
+            else
+                configCombo.Selected = ""
+                configNameInput = ""
+            end
+        else
+            warn("configCombo is nil, cannot update Items")
+        end
+    end
+
+    local settingsSuccess, settingsError = pcall(function()
+        SettingsTab:Separator({Text = "Window Options"})
+        local optionsRow = SettingsTab:Row()
+        optionsRow:Checkbox({
+            IniFlag = "NoResize",
+            Label = "No Resize",
+            Value = false,
+            Callback = function(self, value)
+                TabsWindow:UpdateConfig({NoResize = value})
+            end
+        })
+        optionsRow:Checkbox({
+            IniFlag = "NoTitleBar",
+            Label = "No Title Bar",
+            Value = false,
+            Callback = function(self, value)
+                TabsWindow:UpdateConfig({NoTitleBar = value})
+            end
+        })
+        optionsRow:Checkbox({
+            IniFlag = "NoClose",
+            Label = "No Close",
+            Value = false,
+            Callback = function(self, value)
+                TabsWindow:UpdateConfig({NoClose = value})
+            end
+        })
+        SettingsTab:Separator({Text = "Config Management"})
+        SettingsTab:InputText({
+            IniFlag = "ConfigNameInput",
+            Label = "Config Name",
+            Value = "",
+            Callback = function(self, value)
+                configNameInput = value
+            end
+        })
+        SettingsTab:Button({
+            Text = "Create Config",
+            Callback = function()
+                if configNameInput ~= "" then
+                    local configPath = configFolder .. "/" .. configNameInput .. ".ini"
+                    if isfile(configPath) then
+                        showNotification("This config already exists!", true)
+                        return
+                    end
+                    local saveString = ReGui:DumpIni(true)
+                    if saveString then
+                        writefile(configPath, saveString)
+                        updateConfigList()
+                    end
+                end
+            end
+        })
+        SettingsTab:Button({
+            Text = "Load Config",
+            Callback = function()
+                if configNameInput ~= "" then
+                    local configPath = configFolder .. "/" .. configNameInput .. ".ini"
+                    if isfile(configPath) then
+                        local configData = readfile(configPath)
+                        ReGui:LoadIni(configData, true)
+                    end
+                end
+            end
+        })
+        SettingsTab:Button({
+            Text = "Reload Config",
+            Callback = function()
+                updateConfigList()
+            end
+        })
+        configCombo = SettingsTab:Combo({
+            Label = "List Config",
+            Selected = "",
+            Items = configList,
+            Callback = function(self, value)
+                configNameInput = value
+            end
+        })
+        SettingsTab:Button({
+            Text = "Delete Config",
+            Callback = function()
+                if configNameInput ~= "" then
+                    local configPath = configFolder .. "/" .. configNameInput .. ".ini"
+                    if isfile(configPath) then
+                        delfile(configPath)
+                        updateConfigList()
+                    end
+                end
+            end
+        })
+        updateConfigList()
+    end)
+    if not settingsSuccess then
+        warn("Failed to initialize settings: " .. settingsError)
+        showNotification("Failed to initialize settings: " .. settingsError, true)
+    end
+
+    -- Финальный прогресс
+    progress = 100
+    updateLoader(progress)
+
+    -- Задержка 2 секунды после полной загрузки
+    wait(2)
+
+    -- Показываем ReGui
+    TabsWindow:ToggleVisibility()
+
+    -- Установка флага инжекта
+    getgenv().VeryUpInjected = true
+
+    -- Исчезновение лоадера
+    hideLoader(function()
+        showNotification("Success! Your username: " .. LocalPlayer.Name, false)
+        showNotification("Success! You are in game: " .. MarketplaceService:GetProductInfo(game.PlaceId).Name, false)
+        showNotification("Success: VeryUp Cheat has been injected!", false)
+    end)
+end)
+
+-- Запуск корутины
+local resumeSuccess, resumeError = pcall(function()
+    coroutine.resume(co)
+end)
+if not resumeSuccess then
+    warn("Failed to resume coroutine: " .. resumeError)
+    showNotification("Failed to resume coroutine: " .. resumeError, true)
+    hideLoader()
+end
