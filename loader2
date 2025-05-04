@@ -1,0 +1,407 @@
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Проверка на повторный инжект (изменённое имя переменной)
+if getgenv().VeryUpLoaderMainInjected then
+    warn("Error: Main Loader is already injected!")
+    return
+end
+getgenv().VeryUpLoaderMainInjected = true
+
+-- Детекция инжектора
+local function detectInjector()
+    local executorName = table.concat({identifyexecutor()}, " ") or "Unknown"
+    return executorName
+end
+local injectorName = detectInjector()
+
+-- Создание ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "VeryUpLoader"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = PlayerGui
+
+-- Основной фрейм с прозрачным фоном и градиентом
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 500, 0, 350)
+mainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
+mainFrame.BackgroundTransparency = 0.3
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 25, 50)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+-- Добавление градиента
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 50, 100)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 25, 50))
+})
+gradient.Rotation = 45
+gradient.Parent = mainFrame
+
+-- Закругленные углы
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 15)
+corner.Parent = mainFrame
+
+-- Тень
+local shadow = Instance.new("ImageLabel")
+shadow.Size = UDim2.new(1, 20, 1, 20)
+shadow.Position = UDim2.new(0, -10, 0, -10)
+shadow.BackgroundTransparency = 1
+shadow.Image = "rbxassetid://1316045217"
+shadow.ImageTransparency = 0.7
+shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+shadow.ScaleType = Enum.ScaleType.Slice
+shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+shadow.Parent = mainFrame
+
+-- Название инжектора
+local injectorLabel = Instance.new("TextLabel")
+injectorLabel.Size = UDim2.new(0, 200, 0, 30)
+injectorLabel.Position = UDim2.new(0, 15, 0, 15)
+injectorLabel.BackgroundTransparency = 1
+injectorLabel.Text = "Injector: " .. injectorName
+injectorLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+injectorLabel.TextSize = 18
+injectorLabel.Font = Enum.Font.SourceSansBold
+injectorLabel.TextXAlignment = Enum.TextXAlignment.Left
+injectorLabel.Parent = mainFrame
+
+-- Разделительная полоса под Injector
+local separator = Instance.new("Frame")
+separator.Size = UDim2.new(0, 470, 0, 2)
+separator.Position = UDim2.new(0, 15, 0, 50)
+separator.BackgroundTransparency = 0.5
+separator.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+separator.BorderSizePixel = 0
+separator.Parent = mainFrame
+
+local separatorGradient = Instance.new("UIGradient")
+separatorGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 200, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 100, 255))
+})
+separatorGradient.Parent = separator
+
+-- Название игры (справа сверху)
+local gameNameLabel = Instance.new("TextLabel")
+gameNameLabel.Size = UDim2.new(0, 200, 0, 30)
+gameNameLabel.Position = UDim2.new(1, -215, 0, 15)
+gameNameLabel.BackgroundTransparency = 1
+gameNameLabel.Text = "Game: Loading..."
+gameNameLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+gameNameLabel.TextSize = 18
+gameNameLabel.Font = Enum.Font.SourceSansBold
+gameNameLabel.TextXAlignment = Enum.TextXAlignment.Right
+gameNameLabel.Parent = mainFrame
+
+-- Получение названия игры
+local success, gameInfo = pcall(function()
+    return MarketplaceService:GetProductInfo(game.PlaceId)
+end)
+if success then
+    gameNameLabel.Text = "Game: " .. gameInfo.Name
+else
+    gameNameLabel.Text = "Game: Unknown"
+end
+
+-- Последнее обновление (снизу)
+local lastUpdateLabel = Instance.new("TextLabel")
+lastUpdateLabel.Size = UDim2.new(0, 200, 0, 20)
+lastUpdateLabel.Position = UDim2.new(0.5, -100, 1, -35)
+lastUpdateLabel.BackgroundTransparency = 1
+lastUpdateLabel.Text = "Last Update: 12.04.25"
+lastUpdateLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
+lastUpdateLabel.TextSize = 14
+lastUpdateLabel.Font = Enum.Font.SourceSans
+lastUpdateLabel.Parent = mainFrame
+
+-- Кнопка "Exit"
+local exitButton = Instance.new("TextButton")
+exitButton.Size = UDim2.new(0, 80, 0, 30)
+exitButton.Position = UDim2.new(0, 15, 1, -40)
+exitButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+exitButton.BackgroundTransparency = 0.3
+exitButton.Text = "exit"
+exitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+exitButton.TextSize = 16
+exitButton.Font = Enum.Font.SourceSansBold
+exitButton.Parent = mainFrame
+
+local exitCorner = Instance.new("UICorner")
+exitCorner.CornerRadius = UDim.new(0, 10)
+exitCorner.Parent = exitButton
+
+local exitStroke = Instance.new("UIStroke")
+exitStroke.Thickness = 1
+exitStroke.Color = Color3.fromRGB(30, 25, 50)
+exitStroke.Transparency = 0.7
+exitStroke.Parent = exitButton
+
+-- Анимация для кнопки "Exit"
+local function animateButton(button, hover)
+    local targetTransparency = hover and 0.2 or 0.3
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(button, tweenInfo, {BackgroundTransparency = targetTransparency})
+    tween:Play()
+end
+
+exitButton.MouseEnter:Connect(function()
+    animateButton(exitButton, true)
+end)
+exitButton.MouseLeave:Connect(function()
+    animateButton(exitButton, false)
+end)
+
+-- Анимация удаления для "Exit"
+local function removeGui()
+    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+    local tween = TweenService:Create(mainFrame, tweenInfo, {BackgroundTransparency = 1, Size = UDim2.new(0, 0, 0, 0)})
+    tween:Play()
+    for _, child in pairs(mainFrame:GetChildren()) do
+        if child:IsA("GuiObject") then
+            if child:IsA("ImageLabel") then
+                local childTween = TweenService:Create(child, tweenInfo, {ImageTransparency = 1})
+                childTween:Play()
+            else
+                local childTween = TweenService:Create(child, tweenInfo, {BackgroundTransparency = 1})
+                childTween:Play()
+            end
+        end
+    end
+    wait(0.5)
+    screenGui:Destroy()
+end
+
+exitButton.Activated:Connect(removeGui)
+
+-- Кнопка "Dogs of War" (появляется при GameId 5369242581)
+local dogsOfWarButton
+local isToggled = false
+if game.GameId == 5369242581 then
+    dogsOfWarButton = Instance.new("TextButton")
+    dogsOfWarButton.Size = UDim2.new(0, 250, 0, 40)
+    dogsOfWarButton.Position = UDim2.new(0, 15, 0, 70)
+    dogsOfWarButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    dogsOfWarButton.BackgroundTransparency = 0.3
+    dogsOfWarButton.Text = "Dogs of War"
+    dogsOfWarButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    dogsOfWarButton.TextSize = 20
+    dogsOfWarButton.Font = Enum.Font.SourceSansBold
+    dogsOfWarButton.Parent = mainFrame
+
+    local dogsOfWarCorner = Instance.new("UICorner")
+    dogsOfWarCorner.CornerRadius = UDim.new(0, 10)
+    dogsOfWarCorner.Parent = dogsOfWarButton
+
+    local dogsOfWarStroke = Instance.new("UIStroke")
+    dogsOfWarStroke.Thickness = 1
+    dogsOfWarStroke.Color = Color3.fromRGB(30, 25, 50)
+    dogsOfWarStroke.Transparency = 0.7
+    dogsOfWarStroke.Parent = dogsOfWarButton
+
+    -- Анимация для кнопки "Dogs of War"
+    dogsOfWarButton.MouseEnter:Connect(function()
+        animateButton(dogsOfWarButton, true)
+    end)
+    dogsOfWarButton.MouseLeave:Connect(function()
+        animateButton(dogsOfWarButton, false)
+    end)
+end
+
+-- Вертикальная линия после кнопки
+local verticalSeparator = Instance.new("Frame")
+verticalSeparator.Size = UDim2.new(0, 1, 0, 200)
+verticalSeparator.Position = UDim2.new(0, 270, 0, 70)
+verticalSeparator.BackgroundTransparency = 0.5
+verticalSeparator.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+verticalSeparator.BorderSizePixel = 0
+verticalSeparator.Parent = mainFrame
+
+local verticalSeparatorGradient = Instance.new("UIGradient")
+verticalSeparatorGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 200, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 100, 255))
+})
+verticalSeparatorGradient.Rotation = 90
+verticalSeparatorGradient.Parent = verticalSeparator
+
+-- Элементы, появляющиеся после нажатия на "Dogs of War"
+local loadButton = Instance.new("TextButton")
+loadButton.Size = UDim2.new(0, 120, 0, 40)
+loadButton.Position = UDim2.new(1, -135, 1, -50)
+loadButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+loadButton.BackgroundTransparency = 0.3
+loadButton.Text = "Load"
+loadButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+loadButton.TextSize = 20
+loadButton.Font = Enum.Font.SourceSansBold
+loadButton.Visible = false
+loadButton.Parent = mainFrame
+
+local loadCorner = Instance.new("UICorner")
+loadCorner.CornerRadius = UDim.new(0, 10)
+loadCorner.Parent = loadButton
+
+local loadStroke = Instance.new("UIStroke")
+loadStroke.Thickness = 1
+loadStroke.Color = Color3.fromRGB(30, 25, 50)
+loadStroke.Transparency = 0.7
+loadStroke.Parent = loadButton
+
+-- Анимация для кнопки "Load"
+loadButton.MouseEnter:Connect(function()
+    animateButton(loadButton, true)
+end)
+loadButton.MouseLeave:Connect(function()
+    animateButton(loadButton, false)
+end)
+
+-- Список изменений под "Game"
+local changelogFrame = Instance.new("Frame")
+changelogFrame.Size = UDim2.new(0, 200, 0, 150)
+changelogFrame.Position = UDim2.new(1, -215, 0, 70)
+changelogFrame.BackgroundTransparency = 1
+changelogFrame.BackgroundColor3 = Color3.fromRGB(40, 35, 60)
+changelogFrame.Visible = false
+changelogFrame.Parent = mainFrame
+
+local changelogCorner = Instance.new("UICorner")
+changelogCorner.CornerRadius = UDim.new(0, 8)
+changelogCorner.Parent = changelogFrame
+
+local changelogGradient = Instance.new("UIGradient")
+changelogGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 50, 100)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 35, 60))
+})
+changelogGradient.Parent = changelogFrame
+
+-- Текст списка изменений
+local changelogText = Instance.new("TextLabel")
+changelogText.Size = UDim2.new(1, -10, 1, -10)
+changelogText.Position = UDim2.new(0, 5, 0, 5)
+changelogText.BackgroundTransparency = 1
+changelogText.Text = "Last Update: Beta Release 0.1\n- Added ESP\n- Improved UI\n- Next Update: v1.0"
+changelogText.TextColor3 = Color3.fromRGB(200, 200, 255)
+changelogText.TextSize = 14
+changelogText.Font = Enum.Font.SourceSans
+changelogText.TextXAlignment = Enum.TextXAlignment.Right
+changelogText.TextYAlignment = Enum.TextYAlignment.Top
+changelogText.TextWrapped = true
+changelogText.Parent = changelogFrame
+
+-- Анимация появления и исчезновения для Load и News
+local function animateAppearance(object)
+    object.Visible = true
+    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(object, tweenInfo, {BackgroundTransparency = 0.3, Size = object.Size})
+    tween:Play()
+end
+
+local function animateDisappearance(object)
+    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+    local tween = TweenService:Create(object, tweenInfo, {BackgroundTransparency = 1, Size = UDim2.new(0, 0, 0, 0)})
+    tween:Play()
+    tween.Completed:Connect(function()
+        object.Visible = false
+    end)
+end
+
+-- Логика нажатия на "Dogs of War"
+if dogsOfWarButton then
+    dogsOfWarButton.Activated:Connect(function()
+        isToggled = not isToggled
+        if isToggled then
+            animateAppearance(loadButton)
+            animateAppearance(changelogFrame)
+        else
+            animateDisappearance(loadButton)
+            animateDisappearance(changelogFrame)
+        end
+        local strokeTransparency = isToggled and 0.5 or 0.7
+        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local strokeTween = TweenService:Create(dogsOfWarButton.UIStroke, tweenInfo, {Transparency = strokeTransparency})
+        strokeTween:Play()
+    end)
+end
+
+-- Анимация удаления и загрузка при нажатии "Load"
+local updateLoader, hideLoader
+loadButton.Activated:Connect(function()
+    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+    local tween = TweenService:Create(mainFrame, tweenInfo, {BackgroundTransparency = 1, Size = UDim2.new(0, 0, 0, 0)})
+    tween:Play()
+    for _, child in pairs(mainFrame:GetChildren()) do
+        if child:IsA("GuiObject") then
+            if child:IsA("ImageLabel") then
+                local childTween = TweenService:Create(child, tweenInfo, {ImageTransparency = 1})
+                childTween:Play()
+            else
+                local childTween = TweenService:Create(child, tweenInfo, {BackgroundTransparency = 1})
+                childTween:Play()
+            end
+        end
+    end
+    wait(0.5)
+    screenGui:Destroy()
+
+    -- Загрузка скрипта с использованием updateLoader и hideLoader
+    local loaderSuccess, loaderError = pcall(function()
+        local createLoader = loadstring(game:HttpGet("https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/loader1"))()
+        if createLoader then
+            updateLoader, hideLoader = createLoader()
+            if updateLoader and hideLoader then
+                updateLoader()
+                hideLoader()
+            else
+                warn("updateLoader or hideLoader is nil")
+            end
+        else
+            warn("createLoader returned nil: " .. tostring(loaderError))
+        end
+    end)
+
+    if not loaderSuccess then
+        warn("Failed to load script: " .. tostring(loaderError))
+    end
+end)
+
+-- Автообновление инжектора
+local currentVersion = "1.0"
+local versionUrl = "https://raw.githubusercontent.com/sergeytwwwe/VeryUp/main/version.txt"
+
+local function checkForUpdate()
+    local success, response = pcall(function()
+        return game:HttpGet(versionUrl)
+    end)
+    if success then
+        local latestVersion = response:match("%d+%.%d+")
+        if latestVersion and latestVersion ~= currentVersion then
+            local updateLabel = Instance.new("TextLabel")
+            updateLabel.Size = UDim2.new(0, 300, 0, 30)
+            updateLabel.Position = UDim2.new(0.5, -150, 0, 50)
+            updateLabel.BackgroundTransparency = 0.5
+            updateLabel.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+            updateLabel.Text = "Update Available: v" .. latestVersion .. " (Current: v" .. currentVersion .. ")"
+            updateLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            updateLabel.TextSize = 16
+            updateLabel.Font = Enum.Font.SourceSansBold
+            updateLabel.Parent = mainFrame
+
+            local updateCorner = Instance.new("UICorner")
+            updateCorner.CornerRadius = UDim.new(0, 8)
+            updateCorner.Parent = updateLabel
+        end
+    else
+        warn("Failed to check for injector update: " .. tostring(response))
+    end
+end
+
+checkForUpdate()
