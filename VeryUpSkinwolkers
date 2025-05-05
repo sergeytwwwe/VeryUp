@@ -1,1 +1,772 @@
+local InsertService = game:GetService("InsertService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local ReGui = loadstring(game:HttpGet('https://raw.githubusercontent.com/depthso/Dear-ReGui/refs/heads/main/ReGui.lua'))()
+local PrefabsId = "rbxassetid://" .. ReGui.PrefabsId
+
+ReGui:Init({
+    Prefabs = InsertService:LoadLocalAsset(PrefabsId)
+})
+
+local Window = ReGui:TabsWindow({
+    Title = "Skinwalkers Hack",
+    Size = UDim2.fromOffset(400, 300)
+})
+
+-- Visual Tab
+local VisualTab = Window:CreateTab({Name = "Visual"})
+
+local chamsSkinwalkersEnabled = false
+local chamsSkinwalkersColor = Color3.fromRGB(255, 0, 0)
+local chamsCiviliansEnabled = false
+local chamsCiviliansColor = Color3.fromRGB(0, 255, 0)
+
+local function updateChams()
+    for _, skinwalker in pairs(game.Workspace.Runners.Skinwalkers:GetChildren()) do
+        local humanoid = skinwalker:FindFirstChild("Humanoid")
+        if humanoid and humanoid.Health > 0 then
+            local highlight = skinwalker:FindFirstChild("ChamsHighlight")
+            if not highlight and chamsSkinwalkersEnabled then
+                highlight = Instance.new("Highlight")
+                highlight.Name = "ChamsHighlight"
+                highlight.FillColor = chamsSkinwalkersColor
+                highlight.OutlineColor = chamsSkinwalkersColor
+                highlight.Parent = skinwalker
+            elseif highlight and not chamsSkinwalkersEnabled then
+                highlight:Destroy()
+            end
+        elseif humanoid and humanoid.Health <= 0 and skinwalker:FindFirstChild("ChamsHighlight") then
+            skinwalker:FindFirstChild("ChamsHighlight"):Destroy()
+        end
+    end
+    for _, nightwalker in pairs(game.Workspace.Nightwalkers:GetChildren()) do
+        local humanoid = nightwalker:FindFirstChild("Humanoid")
+        if humanoid and humanoid.Health > 0 then
+            local highlight = nightwalker:FindFirstChild("ChamsHighlight")
+            if not highlight and chamsSkinwalkersEnabled then
+                highlight = Instance.new("Highlight")
+                highlight.Name = "ChamsHighlight"
+                highlight.FillColor = chamsSkinwalkersColor
+                highlight.OutlineColor = chamsSkinwalkersColor
+                highlight.Parent = nightwalker
+            elseif highlight and not chamsSkinwalkersEnabled then
+                highlight:Destroy()
+                highlight = nil
+            end
+        elseif humanoid and humanoid.Health <= 0 and nightwalker:FindFirstChild("ChamsHighlight") then
+            nightwalker:FindFirstChild("ChamsHighlight"):Destroy()
+        end
+    end
+    for _, civilian in pairs(game.Workspace.Runners.Civilians:GetChildren()) do
+        local humanoid = civilian:FindFirstChild("Humanoid")
+        if humanoid and humanoid.Health > 0 then
+            local highlight = civilian:FindFirstChild("ChamsHighlight")
+            if not highlight and chamsCiviliansEnabled then
+                highlight = Instance.new("Highlight")
+                highlight.Name = "ChamsHighlight"
+                highlight.FillColor = chamsCiviliansColor
+                highlight.OutlineColor = chamsCiviliansColor
+                highlight.Parent = civilian
+            elseif highlight and not chamsCiviliansEnabled then
+                highlight:Destroy()
+            end
+        elseif humanoid and humanoid.Health <= 0 and civilian:FindFirstChild("ChamsHighlight") then
+            civilian:FindFirstChild("ChamsHighlight"):Destroy()
+        end
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    if chamsSkinwalkersEnabled or chamsCiviliansEnabled then
+        updateChams()
+    end
+end)
+
+VisualTab:Checkbox({
+    Label = "Chams Skinwalkers (including Nightwalkers)",
+    Value = chamsSkinwalkersEnabled,
+    Callback = function(self, value)
+        chamsSkinwalkersEnabled = value
+        updateChams()
+    end
+})
+
+VisualTab:InputColor3({
+    Label = "Chams Skinwalkers Color",
+    Value = chamsSkinwalkersColor,
+    Callback = function(self, value)
+        chamsSkinwalkersColor = value
+        updateChams()
+    end
+})
+
+VisualTab:Checkbox({
+    Label = "Chams Civilians",
+    Value = chamsCiviliansEnabled,
+    Callback = function(self, value)
+        chamsCiviliansEnabled = value
+        updateChams()
+    end
+})
+
+VisualTab:InputColor3({
+    Label = "Chams Civilians Color",
+    Value = chamsCiviliansColor,
+    Callback = function(self, value)
+        chamsCiviliansColor = value
+        updateChams()
+    end
+})
+
+game.Workspace.Runners.Skinwalkers.ChildAdded:Connect(function(child)
+    if child:FindFirstChild("Humanoid") then
+        child.Humanoid.HealthChanged:Connect(function(health)
+            if health <= 0 then updateChams() end
+        end)
+    end
+    updateChams()
+end)
+game.Workspace.Nightwalkers.ChildAdded:Connect(function(child)
+    if child:FindFirstChild("Humanoid") then
+        child.Humanoid.HealthChanged:Connect(function(health)
+            if health <= 0 then updateChams() end
+        end)
+    end
+    updateChams()
+end)
+game.Workspace.Runners.Civilians.ChildAdded:Connect(function(child)
+    if child:FindFirstChild("Humanoid") then
+        child.Humanoid.HealthChanged:Connect(function(health)
+            if health <= 0 then updateChams() end
+        end)
+    end
+    updateChams()
+end)
+game.Workspace.Runners.Skinwalkers.ChildRemoved:Connect(updateChams)
+game.Workspace.Nightwalkers.ChildRemoved:Connect(updateChams)
+game.Workspace.Runners.Civilians.ChildRemoved:Connect(updateChams)
+
+-- Combat Tab
+local CombatTab = Window:CreateTab({Name = "Combat"})
+
+local aimbotMode = "PC"
+local aimbotKeybind = Enum.KeyCode.T
+local aimbotButtonGui = nil
+local initialPosition = nil
+local currentTarget = nil
+local isLocked = false
+local aimbotEnabled = false
+local aimbotRunning = false
+local triggerbotEnabled = false
+local triggerbotFireRate = 0.1
+local lastFireTime = 0
+local autoKillEnabled = false
+local autoKillInterval = 3.0
+local autoCollectEnabled = false
+local autoCollectKeybind = Enum.KeyCode.Y
+local infCollectSackEnabled = false
+
+-- Noclip Logic
+local Noclip = nil
+local Clip = nil
+local floatName = "FloatPart" -- Если у тебя есть часть с названием floatName, нужно её указать
+
+local function noclip()
+    Clip = false
+    local function Nocl()
+        if Clip == false and game.Players.LocalPlayer.Character ~= nil then
+            for _, v in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+                if v:IsA('BasePart') and v.CanCollide and v.Name ~= floatName then
+                    v.CanCollide = false
+                end
+            end
+        end
+        wait(0.21) -- basic optimization
+    end
+    Noclip = game:GetService('RunService').Stepped:Connect(Nocl)
+    --("[Noclip] Enabled")
+end
+
+local function clip()
+    if Noclip then Noclip:Disconnect() end
+    Clip = true
+    --("[Noclip] Disabled")
+end
+
+local function setNoclip(enabled)
+    if enabled then
+        noclip()
+    else
+        clip()
+    end
+end
+
+-- Auto Kill Logic with Magic Bullets (ignoring Civilians)
+local function autoKill()
+    local player = Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    if not character then
+        --("[Auto Kill] Character not found")
+        return
+    end
+
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then
+        --("[Auto Kill] Humanoid not found")
+        return
+    end
+
+    local sniper = character:FindFirstChild("Sniper")
+    if not sniper then
+        --("[Auto Kill] Sniper tool not found")
+        return
+    end
+
+    local handle = sniper:FindFirstChild("Handle")
+    if not handle then
+        --("[Auto Kill] Handle not found in Sniper")
+        return
+    end
+
+    local sniperShot = ReplicatedStorage.Remotes:WaitForChild("SniperShot")
+
+    spawn(function()
+        while autoKillEnabled do
+            -- Собираем всех Skinwalkers и Nightwalkers
+            local targets = {}
+            for _, skinwalker in pairs(game.Workspace.Runners.Skinwalkers:GetChildren()) do
+                local humanoid = skinwalker:FindFirstChild("Humanoid")
+                local rootPart = skinwalker:FindFirstChild("HumanoidRootPart")
+                if humanoid and rootPart and humanoid.Health > 0 then
+                    local raycastParams = RaycastParams.new()
+                    raycastParams.FilterDescendantsInstances = {game.Workspace.Runners.Civilians}
+                    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+                    local raycastResult = workspace:Raycast(handle.Position, (rootPart.Position - handle.Position).Unit * 1000, raycastParams)
+                    if raycastResult and raycastResult.Instance and (raycastResult.Instance:IsDescendantOf(skinwalker) or not raycastResult.Instance.Parent) then
+                        table.insert(targets, {model = skinwalker, position = rootPart.Position})
+                    end
+                end
+            end
+            for _, nightwalker in pairs(game.Workspace.Nightwalkers:GetChildren()) do
+                local humanoid = nightwalker:FindFirstChild("Humanoid")
+                local rootPart = nightwalker:FindFirstChild("HumanoidRootPart")
+                if humanoid and rootPart and humanoid.Health > 0 then
+                    local raycastParams = RaycastParams.new()
+                    raycastParams.FilterDescendantsInstances = {game.Workspace.Runners.Civilians}
+                    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+                    local raycastResult = workspace:Raycast(handle.Position, (rootPart.Position - handle.Position).Unit * 1000, raycastParams)
+                    if raycastResult and raycastResult.Instance and (raycastResult.Instance:IsDescendantOf(nightwalker) or not raycastResult.Instance.Parent) then
+                        table.insert(targets, {model = nightwalker, position = rootPart.Position})
+                    end
+                end
+            end
+
+            -- Стреляем в каждого врага, игнорируя гражданских
+            for _, target in pairs(targets) do
+                if not autoKillEnabled then break end
+                -- Дополнительная проверка, чтобы не стрелять в гражданских
+                if target.model.Parent == game.Workspace.Runners.Civilians then
+                    continue
+                end
+                --("[Auto Kill] Targeting:", target.model.Name, "at position:", target.position)
+                sniperShot:FireServer(handle.Position, target.position, target.model)
+                wait(0.1) -- Задержка между выстрелами
+            end
+
+            wait(autoKillInterval) -- Задержка с учетом слайдера
+        end
+    end)
+end
+
+CombatTab:Checkbox({
+    Label = "Enable Auto Kill",
+    Value = autoKillEnabled,
+    Callback = function(self, value)
+        autoKillEnabled = value
+        if autoKillEnabled then
+            --("[Auto Kill] Enabling Auto Kill")
+            autoKill()
+        else
+            --("[Auto Kill] Disabling Auto Kill")
+        end
+    end
+})
+
+CombatTab:SliderFloat({
+    Label = "Auto Kill Interval",
+    Value = autoKillInterval,
+    Minimum = 1.0,
+    Maximum = 5.0,
+    Format = "Interval = %.1f sec",
+    Callback = function(self, value)
+        autoKillInterval = value
+        --("[Auto Kill] Interval set to:", autoKillInterval, "seconds")
+    end
+})
+
+-- Auto Collect Logic
+local function autoCollect()
+    local player = Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    if not character then
+        --("[Auto Collect] Character not found")
+        return
+    end
+
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then
+        --("[Auto Collect] Humanoid not found")
+        return
+    end
+
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then
+        --("[Auto Collect] HumanoidRootPart not found")
+        return
+    end
+
+    -- Находим Sack
+    local sack = character:FindFirstChild("Sack")
+    if not sack then
+        --("[Auto Collect] Sack not found in character")
+        return
+    end
+
+    local sackHandler = sack:FindFirstChild("SackHandler")
+    if not sackHandler or not sackHandler:IsA("LocalScript") then
+        --("[Auto Collect] SackHandler not found or not a LocalScript")
+        return
+    end
+
+    -- Сохраняем исходную позицию
+    local initialPosition = humanoidRootPart.CFrame
+
+    -- Переключаем инструмент на Sack (клавиша 1)
+    local success, err = pcall(function()
+        game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.One, false, game)
+        wait(0.1)
+        game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.One, false, game)
+    end)
+    if not success then
+        --("[Auto Collect] Failed to switch to Sack:", err)
+    end
+    wait(0.5)
+
+    -- Собираем все трупы
+    local corpses = {}
+    for _, skinwalker in pairs(game.Workspace.Runners.Skinwalkers:GetChildren()) do
+        local humanoid = skinwalker:FindFirstChild("Humanoid")
+        local rootPart = skinwalker:FindFirstChild("HumanoidRootPart")
+        if humanoid and rootPart and humanoid.Health <= 0 and skinwalker:HasTag("Draggable") then
+            table.insert(corpses, {model = skinwalker, position = rootPart.Position})
+        end
+    end
+    for _, nightwalker in pairs(game.Workspace.Nightwalkers:GetChildren()) do
+        local humanoid = nightwalker:FindFirstChild("Humanoid")
+        local rootPart = nightwalker:FindFirstChild("HumanoidRootPart")
+        if humanoid and rootPart and humanoid.Health <= 0 and nightwalker:HasTag("Draggable") then
+            table.insert(corpses, {model = nightwalker, position = rootPart.Position})
+        end
+    end
+
+    -- Телепортируемся к каждому трупу и собираем
+    local mouse = player:GetMouse()
+    local originalTarget = mouse.Target
+    local noSaveData = player:FindFirstChild("NoSaveData")
+    local targetedObject = noSaveData and noSaveData:FindFirstChild("TargetedObject")
+
+    for _, corpse in pairs(corpses) do
+        if not autoCollectEnabled then break end
+        --("[Auto Collect] Collecting corpse:", corpse.model.Name, "at position:", corpse.position)
+        humanoidRootPart.CFrame = CFrame.new(corpse.position + Vector3.new(0, 5, 0))
+        wait(0.5)
+
+        -- Подменяем цель для UseSack
+        local tempPart = Instance.new("Part")
+        tempPart.Position = corpse.position
+        tempPart.Size = Vector3.new(1, 1, 1)
+        tempPart.Anchored = true
+        tempPart.Transparency = 1
+        tempPart.Parent = workspace
+        mouse.Target = tempPart
+
+        if targetedObject then
+            targetedObject.Value = corpse.model
+        end
+
+        -- Вызываем UseSack
+        local success, err = pcall(function()
+            local UseSack = getfenv(sackHandler.UseSack).UseSack
+            UseSack()
+        end)
+        if not success then
+            --("[Auto Collect] Failed to call UseSack:", err)
+        end
+        wait(0.5)
+
+        -- Удаляем временную часть
+        tempPart:Destroy()
+    end
+
+    -- Восстанавливаем оригинальную цель
+    mouse.Target = originalTarget
+    if targetedObject then
+        targetedObject.Value = nil
+    end
+
+    -- Возвращаем игрока на исходную позицию
+    humanoidRootPart.CFrame = initialPosition
+
+    -- Переключаем инструмент обратно на Sniper (клавиша 2)
+    success, err = pcall(function()
+        game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.Two, false, game)
+        wait(0.1)
+        game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.Two, false, game)
+    end)
+    if not success then
+        --("[Auto Collect] Failed to switch to Sniper:", err)
+    end
+    wait(0.5)
+end
+
+
+CombatTab:Checkbox({
+    Label = "Inf Collect Sack",
+    Value = infCollectSackEnabled,
+    Callback = function(self, value)
+        infCollectSackEnabled = value
+        local player = Players.LocalPlayer
+        local savedData = player:FindFirstChild("SavedData")
+        if savedData and infCollectSackEnabled then
+            local sackCapacity = savedData:FindFirstChild("SackCapacity")
+            if sackCapacity and sackCapacity:IsA("IntValue") then
+                sackCapacity.Value = 99999
+                
+            else
+                
+            end
+        end
+    end
+})
+
+
+local function createAimbotButton()
+    if aimbotButtonGui then aimbotButtonGui:Destroy() end
+    if aimbotMode == "Mobile" then
+        aimbotButtonGui = Instance.new("ScreenGui")
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(0, 100, 0, 50)
+        button.Position = UDim2.new(1, -110, 0, 10)
+        button.Text = "Aimbot"
+        button.Parent = aimbotButtonGui
+        aimbotButtonGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+        button.MouseButton1Click:Connect(function()
+            if aimbotEnabled then
+                toggleAimbot()
+            end
+        end)
+    end
+end
+
+local function findNearestTarget()
+    local player = Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    if not character or not character:FindFirstChild("HumanoidRootPart") then 
+        --("[Aimbot] Player character or HumanoidRootPart not found")
+        return nil 
+    end
+    
+    local target = nil
+    local shortestDistance = math.huge
+    for _, other in pairs(game.Workspace.Runners.Skinwalkers:GetChildren()) do
+        local humanoid = other:FindFirstChild("Humanoid")
+        local rootPart = other:FindFirstChild("HumanoidRootPart")
+        if humanoid and rootPart and humanoid.Health > 0 then
+            local distance = (character.HumanoidRootPart.Position - rootPart.Position).Magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                target = other
+                --("[Aimbot] Found potential target:", other.Name, "Distance:", distance, "Health:", humanoid.Health)
+            else
+                --("[Aimbot] Skipped target:", other.Name, "Distance:", distance, "Health:", humanoid.Health)
+            end
+        else
+            --("[Aimbot] Skipped target:", other.Name, "Reason: No Humanoid/RootPart or dead, Health:", humanoid and humanoid.Health or "No Humanoid")
+        end
+    end
+    for _, other in pairs(game.Workspace.Nightwalkers:GetChildren()) do
+        local humanoid = other:FindFirstChild("Humanoid")
+        local rootPart = other:FindFirstChild("HumanoidRootPart")
+        if humanoid and rootPart and humanoid.Health > 0 then
+            local distance = (character.HumanoidRootPart.Position - rootPart.Position).Magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                target = other
+                --("[Aimbot] Found potential target:", other.Name, "Distance:", distance, "Health:", humanoid.Health)
+            else
+                --("[Aimbot] Skipped target:", other.Name, "Distance:", distance, "Health:", humanoid.Health)
+            end
+        else
+            --("[Aimbot] Skipped target:", other.Name, "Reason: No Humanoid/RootPart or dead, Health:", humanoid and humanoid.Health or "No Humanoid")
+        end
+    end
+    if target then
+        --("[Aimbot] Selected onto target:", target.Name, "at direction:", shortestDistance)
+    else
+        --("[Aimbot] No valid targets found")
+    end
+    return target
+end
+
+local function isTargetUnderMouse()
+    local player = Players.LocalPlayer
+    local mouse = player:GetMouse()
+    local target = mouse.Target
+    if not target then return false end
+
+    local parent = target.Parent
+    while parent and parent ~= game.Workspace do
+        if parent.Parent == game.Workspace.Runners.Skinwalkers or parent.Parent == game.Workspace.Nightwalkers then
+            local humanoid = parent:FindFirstChild("Humanoid")
+            if humanoid and humanoid.Health > 0 then
+                --("[Triggerbot] Mouse over target:", parent.Name)
+                return true
+            end
+        end
+        parent = parent.Parent
+    end
+    return false
+end
+
+local function activateTool()
+    local player = Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    if not character then 
+        --("[Triggerbot] Character not found")
+        return 
+    end
+
+    local tool = character:FindFirstChildOfClass("Tool")
+    if not tool then
+        --("[Triggerbot] No tool found in player's character")
+        return
+    end
+
+    if not tool.Enabled then
+        --("[Triggerbot] Tool is not enabled:", tool.Name)
+        return
+    end
+
+    local success, err = pcall(function()
+        tool:Activate()
+    end)
+    if success then
+        --("[Triggerbot] Activated tool using tool:Activate():", tool.Name)
+    else
+        --("[Triggerbot] Failed to activate tool:", err)
+    end
+end
+
+local function lockOnTarget(target)
+    if not target then 
+        --("[Aimbot] Target is nil, cannot lock on")
+        return 
+    end
+
+    local player = Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    if not character or not character:FindFirstChild("HumanoidRootPart") then 
+        --("[Aimbot] Player character or HumanoidRootPart not found")
+        return 
+    end
+
+    local heightOffset = Vector3.new(0, 7.5, 0)
+    local targetPosition = target:FindFirstChild("HumanoidRootPart") and target.HumanoidRootPart.Position + heightOffset or nil
+    if not targetPosition then
+        --("[Aimbot] Target HumanoidRootPart not found, cannot lock on")
+        return
+    end
+
+    local humanoidRootPart = character.HumanoidRootPart
+    local bodyPosition = humanoidRootPart:FindFirstChild("AimbotBodyPosition")
+    if not bodyPosition then
+        bodyPosition = Instance.new("BodyPosition")
+        bodyPosition.Name = "AimbotBodyPosition"
+        bodyPosition.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bodyPosition.Position = targetPosition
+        bodyPosition.Parent = humanoidRootPart
+    else
+        bodyPosition.Position = targetPosition
+    end
+
+    humanoidRootPart.CFrame = CFrame.new(targetPosition)
+    isLocked = true
+    currentTarget = target
+
+    local humanoid = character:FindFirstChild("Humanoid")
+    if humanoid then
+        humanoid.WalkSpeed = 0
+        --("[Aimbot] Locked onto target:", target.Name, "at position:", targetPosition)
+    else
+        --("[Aimbot] Failed to lock - player Humanoid not found")
+        isLocked = false
+        currentTarget = nil
+        if bodyPosition then bodyPosition:Destroy() end
+        return
+    end
+
+    spawn(function()
+        while aimbotRunning do
+            if not currentTarget or not currentTarget.Parent then
+                --("[Aimbot] Target lost (nil or no Parent), retrying...")
+                isLocked = false
+            end
+
+            if isLocked then
+                local targetHumanoid = currentTarget:FindFirstChild("Humanoid")
+                local targetRoot = currentTarget:FindFirstChild("HumanoidRootPart")
+                if targetHumanoid and targetRoot and targetHumanoid.Health > 0 then
+                    local newPosition = targetRoot.Position + heightOffset
+                    bodyPosition.Position = newPosition
+                    --("[Aimbot] Following target:", currentTarget.Name, "Position:", newPosition)
+                else
+                    --("[Aimbot] Target invalid or killed:", currentTarget.Name, "Health:", targetHumanoid and targetHumanoid.Health or "No Humanoid", "RootPart:", targetRoot and "Exists" or "Missing")
+                    isLocked = false
+                end
+            end
+
+            if not isLocked and aimbotRunning then
+                local nextTarget = findNearestTarget()
+                if nextTarget then
+                    --("[Aimbot] Moving to next target:", nextTarget.Name)
+                    currentTarget = nextTarget
+                    isLocked = true
+                    lastFireTime = 0 -- Сбрасываем время последнего выстрела при смене цели
+                    local newPosition = nextTarget:FindFirstChild("HumanoidRootPart") and nextTarget.HumanoidRootPart.Position + heightOffset or nil
+                    if newPosition then
+                        bodyPosition.Position = newPosition
+                        humanoidRootPart.CFrame = CFrame.new(newPosition)
+                        --("[Aimbot] Locked onto target:", nextTarget.Name, "at position:", newPosition)
+                    else
+                        --("[Aimbot] New target invalid, skipping...")
+                        isLocked = false
+                    end
+                else
+                    --("[Aimbot] No more targets, waiting for new ones...")
+                end
+            end
+
+            if triggerbotEnabled and isTargetUnderMouse() then
+                local currentTime = tick()
+                if currentTime - lastFireTime >= triggerbotFireRate then
+                    activateTool()
+                    lastFireTime = currentTime
+                end
+            end
+
+            RunService.RenderStepped:Wait()
+        end
+
+        if bodyPosition then bodyPosition:Destroy() end
+        setNoclip(false)
+        isLocked = false
+        currentTarget = nil
+        if initialPosition and humanoid then
+            humanoidRootPart.CFrame = initialPosition
+            humanoid.WalkSpeed = 16
+            humanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+            humanoidRootPart.RotVelocity = Vector3.new(0, 0, 0)
+            --("[Aimbot] Stopped, returned to initial position:", initialPosition.Position)
+            initialPosition = nil
+        else
+            --("[Aimbot] Stopped, no initial position to return to")
+        end
+    end)
+end
+
+function toggleAimbot()
+    if not aimbotEnabled then
+        --("[Aimbot] Aimbot is disabled via checkbox")
+        return
+    end
+
+    local player = Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    if not character or not character:FindFirstChild("HumanoidRootPart") then 
+        --("[Aimbot] Player character or HumanoidRootPart not found")
+        return 
+    end
+
+    if not aimbotRunning then
+        aimbotRunning = true
+        setNoclip(true)
+        initialPosition = character.HumanoidRootPart.CFrame
+        --("[Aimbot] Saved initial position:", initialPosition.Position)
+        local target = findNearestTarget()
+        if target then
+            lockOnTarget(target)
+        else
+            --("[Aimbot] No targets to lock onto, waiting for new ones...")
+        end
+    else
+        aimbotRunning = false
+        --("[Aimbot] Aimbot manually stopped via toggleAimbot")
+    end
+end
+
+CombatTab:Checkbox({
+    Label = "Enable Aimbot",
+    Value = aimbotEnabled,
+    Callback = function(self, value)
+        aimbotEnabled = value
+        if not aimbotEnabled and aimbotRunning then
+            --("[Aimbot] Checkbox disabled, stopping Aimbot")
+            toggleAimbot()
+            --("[Aimbot] Aimbot disabled via checkbox")
+        end
+    end
+})
+
+
+CombatTab:Combo({
+    Label = "Aimbot Mode",
+    Selected = aimbotMode,
+    Items = {"PC", "Mobile"},
+    Callback = function(self, value)
+        aimbotMode = value
+        createAimbotButton()
+    end
+})
+
+CombatTab:Keybind({
+    Label = "Aimbot Toggle",
+    Value = aimbotKeybind,
+    Callback = function()
+        --("[Aimbot] Keybind set to:", aimbotKeybind)
+    end
+})
+
+UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+    if gameProcessedEvent then return end
+    if input.KeyCode == aimbotKeybind and aimbotMode == "PC" then
+        --("[Aimbot] T key pressed, toggling Aimbot")
+        toggleAimbot()
+    end
+end)
+
+-- Settings Tab
+local SettingsTab = Window:CreateTab({Name = "Settings"})
+
+local hideKeybind = Enum.KeyCode.RightShift
+SettingsTab:Keybind({
+    Label = "Hide UI",
+    Value = hideKeybind,
+    Callback = function()
+        Window:ToggleVisibility()
+    end
+})
+
+createAimbotButton()
