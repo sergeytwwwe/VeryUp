@@ -344,7 +344,6 @@ local function updateESP()
 
         -- Цвет в зависимости от роли
         local roleColor = getRoleColor(player)
-        local boxColor = roleColor
 
         -- Фиксированный размер бокса (в пикселях)
         local boxHeight = 100
@@ -367,117 +366,126 @@ local function updateESP()
             -- Верхний левый угол
             elements.BoxLines.TL1.From = topLeft
             elements.BoxLines.TL1.To = Vector2.new(topLeft.X + cornerLength, topLeft.Y)
-            elements.BoxLines.TL1.Color = boxColor
+            elements.BoxLines.TL1.Color = roleColor
             elements.BoxLines.TL1.Visible = true
 
             elements.BoxLines.TL2.From = topLeft
             elements.BoxLines.TL2.To = Vector2.new(topLeft.X, topLeft.Y + cornerLength)
-            elements.BoxLines.TL2.Color = boxColor
+            elements.BoxLines.TL2.Color = roleColor
             elements.BoxLines.TL2.Visible = true
 
             -- Верхний правый угол
             elements.BoxLines.TR1.From = topRight
             elements.BoxLines.TR1.To = Vector2.new(topRight.X - cornerLength, topRight.Y)
-            elements.BoxLines.TR1.Color = boxColor
+            elements.BoxLines.TR1.Color = roleColor
             elements.BoxLines.TR1.Visible = true
 
             elements.BoxLines.TR2.From = topRight
             elements.BoxLines.TR2.To = Vector2.new(topRight.X, topRight.Y + cornerLength)
-            elements.BoxLines.TR2.Color = boxColor
+            elements.BoxLines.TR2.Color = roleColor
             elements.BoxLines.TR2.Visible = true
 
             -- Нижний левый угол
             elements.BoxLines.BL1.From = bottomLeft
             elements.BoxLines.BL1.To = Vector2.new(bottomLeft.X + cornerLength, bottomLeft.Y)
-            elements.BoxLines.BL1.Color = boxColor
+            elements.BoxLines.BL1.Color = roleColor
             elements.BoxLines.BL1.Visible = true
 
             elements.BoxLines.BL2.From = bottomLeft
             elements.BoxLines.BL2.To = Vector2.new(bottomLeft.X, bottomLeft.Y - cornerLength)
-            elements.BoxLines.BL2.Color = boxColor
+            elements.BoxLines.BL2.Color = roleColor
             elements.BoxLines.BL2.Visible = true
 
             -- Нижний правый угол
             elements.BoxLines.BR1.From = bottomRight
             elements.BoxLines.BR1.To = Vector2.new(bottomRight.X - cornerLength, bottomRight.Y)
-            elements.BoxLines.BR1.Color = boxColor
+            elements.BoxLines.BR1.Color = roleColor
             elements.BoxLines.BR1.Visible = true
 
             elements.BoxLines.BR2.From = bottomRight
             elements.BoxLines.BR2.To = Vector2.new(bottomRight.X, bottomRight.Y - cornerLength)
-            elements.BoxLines.BR2.Color = boxColor
+            elements.BoxLines.BR2.Color = roleColor
             elements.BoxLines.BR2.Visible = true
-        end
+        }
 
-        -- Name
-        if espSettings.Name and onScreen then
-            elements.Name.Text = player.Name
-            elements.Name.Position = Vector2.new(rootPos.X, rootPos.Y - boxOffsetY - 30)
-            elements.Name.Color = roleColor
-            elements.Name.Visible = true
-        else
-            elements.Name.Visible = false
-        end
+        -- Расположение надписей
+        if onScreen then
+            -- Role (над Name)
+            if espSettings.Role then
+                elements.Role.Text = getPlayerRole(player)
+                elements.Role.Position = Vector2.new(rootPos.X, rootPos.Y - boxOffsetY - 50)
+                elements.Role.Color = roleColor
+                elements.Role.Visible = true
+            else
+                elements.Role.Visible = false
+            end
 
-        -- Role
-        if espSettings.Role and onScreen then
-            elements.Role.Text = getPlayerRole(player)
-            elements.Role.Position = Vector2.new(rootPos.X, rootPos.Y - boxOffsetY - 50)
-            elements.Role.Color = roleColor
-            elements.Role.Visible = true
+            -- Name (над боксом)
+            if espSettings.Name then
+                elements.Name.Text = player.Name
+                elements.Name.Position = Vector2.new(rootPos.X, rootPos.Y - boxOffsetY - 30)
+                elements.Name.Color = roleColor
+                elements.Name.Visible = true
+            else
+                elements.Name.Visible = false
+            end
+
+            -- Distance (под боксом)
+            if espSettings.Distance then
+                elements.Distance.Text = math.floor(distance) .. " studs"
+                elements.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxOffsetY + 20)
+                elements.Distance.Color = roleColor
+                elements.Distance.Visible = true
+            else
+                elements.Distance.Visible = false
+            end
+
+            -- Health (под Distance)
+            if espSettings.Health then
+                local health = humanoid.Health
+                local maxHealth = humanoid.MaxHealth
+                elements.Health.Text = health <= 0 and "Down" or math.floor(health) .. "/" .. math.floor(maxHealth)
+                elements.Health.Position = Vector2.new(rootPos.X, rootPos.Y + boxOffsetY + 40)
+                elements.Health.Color = roleColor
+                elements.Health.Visible = true
+
+                -- Health Bar
+                local barWidth = 6
+                local barHeight = boxHeight
+                local healthRatio = health / maxHealth
+                local healthColor = Color3.fromRGB(255 * (1 - healthRatio), 255 * healthRatio, 0)
+
+                elements.HealthBarFrame.From = Vector2.new(rootPos.X + boxWidth / 2 + 6, rootPos.Y - boxOffsetY)
+                elements.HealthBarFrame.To = Vector2.new(rootPos.X + boxWidth / 2 + 6, rootPos.Y - boxOffsetY + barHeight)
+                elements.HealthBarFrame.Visible = true
+
+                elements.HealthBar.From = Vector2.new(rootPos.X + boxWidth / 2 + 6, rootPos.Y - boxOffsetY + barHeight * (1 - healthRatio))
+                elements.HealthBar.To = Vector2.new(rootPos.X + boxWidth / 2 + 6, rootPos.Y - boxOffsetY)
+                elements.HealthBar.Color = healthColor
+                elements.HealthBar.Visible = true
+            else
+                elements.Health.Visible = false
+                elements.HealthBar.Visible = false
+                elements.HealthBarFrame.Visible = false
+            end
+
+            -- Weapon (под Health)
+            if espSettings.Weapon then
+                local tool = character:FindFirstChildOfClass("Tool")
+                elements.Weapon.Text = tool and tool.Name or "No Weapon"
+                elements.Weapon.Position = Vector2.new(rootPos.X, rootPos.Y + boxOffsetY + 60)
+                elements.Weapon.Color = roleColor
+                elements.Weapon.Visible = true
+            else
+                elements.Weapon.Visible = false
+            end
         else
             elements.Role.Visible = false
-        end
-
-        -- Distance
-        if espSettings.Distance and onScreen then
-            elements.Distance.Text = math.floor(distance) .. " studs"
-            elements.Distance.Position = Vector2.new(rootPos.X, rootPos.Y - boxOffsetY + 20)
-            elements.Distance.Color = roleColor
-            elements.Distance.Visible = true
-        else
+            elements.Name.Visible = false
             elements.Distance.Visible = false
-        end
-
-        -- Health
-        if espSettings.Health and onScreen then
-            local health = humanoid.Health
-            local maxHealth = humanoid.MaxHealth
-            elements.Health.Text = health <= 0 and "Down" or math.floor(health) .. "/" .. math.floor(maxHealth)
-            elements.Health.Position = Vector2.new(rootPos.X, rootPos.Y - boxOffsetY + 40)
-            elements.Health.Color = roleColor
-            elements.Health.Visible = true
-
-            -- Health Bar с динамическим цветом и рамкой
-            local barWidth = 6
-            local barHeight = boxHeight
-            local healthRatio = health / maxHealth
-            local healthColor = Color3.fromRGB(255 * (1 - healthRatio), 255 * healthRatio, 0)
-
-            -- Рамка Health Bar
-            elements.HealthBarFrame.From = Vector2.new(rootPos.X + boxWidth / 2 + 6, rootPos.Y - boxOffsetY)
-            elements.HealthBarFrame.To = Vector2.new(rootPos.X + boxWidth / 2 + 6, rootPos.Y - boxOffsetY + barHeight)
-            elements.HealthBarFrame.Visible = true
-
-            -- Основная линия Health Bar
-            elements.HealthBar.From = Vector2.new(rootPos.X + boxWidth / 2 + 6, rootPos.Y - boxOffsetY + barHeight * (1 - healthRatio))
-            elements.HealthBar.To = Vector2.new(rootPos.X + boxWidth / 2 + 6, rootPos.Y - boxOffsetY)
-            elements.HealthBar.Color = healthColor
-            elements.HealthBar.Visible = true
-        else
             elements.Health.Visible = false
             elements.HealthBar.Visible = false
             elements.HealthBarFrame.Visible = false
-        end
-
-        -- Weapon
-        if espSettings.Weapon and onScreen then
-            local tool = character:FindFirstChildOfClass("Tool")
-            elements.Weapon.Text = tool and tool.Name or "No Weapon"
-            elements.Weapon.Position = Vector2.new(rootPos.X, rootPos.Y - boxOffsetY + 60)
-            elements.Weapon.Color = roleColor
-            elements.Weapon.Visible = true
-        else
             elements.Weapon.Visible = false
         end
 
@@ -598,39 +606,47 @@ local function updateItemESP()
             -- Верхний левый угол
             elements.BoxLines.TL1.From = topLeft
             elements.BoxLines.TL1.To = Vector2.new(topLeft.X + cornerLength, topLeft.Y)
+            elements.BoxLines.TL1.Color = Color3.fromRGB(255, 255, 255)
             elements.BoxLines.TL1.Visible = true
 
             elements.BoxLines.TL2.From = topLeft
             elements.BoxLines.TL2.To = Vector2.new(topLeft.X, topLeft.Y + cornerLength)
+            elements.BoxLines.TL2.Color = Color3.fromRGB(255, 255, 255)
             elements.BoxLines.TL2.Visible = true
 
             -- Верхний правый угол
             elements.BoxLines.TR1.From = topRight
             elements.BoxLines.TR1.To = Vector2.new(topRight.X - cornerLength, topRight.Y)
+            elements.BoxLines.TR1.Color = Color3.fromRGB(255, 255, 255)
             elements.BoxLines.TR1.Visible = true
 
             elements.BoxLines.TR2.From = topRight
             elements.BoxLines.TR2.To = Vector2.new(topRight.X, topRight.Y + cornerLength)
+            elements.BoxLines.TR2.Color = Color3.fromRGB(255, 255, 255)
             elements.BoxLines.TR2.Visible = true
 
             -- Нижний левый угол
             elements.BoxLines.BL1.From = bottomLeft
             elements.BoxLines.BL1.To = Vector2.new(bottomLeft.X + cornerLength, bottomLeft.Y)
+            elements.BoxLines.BL1.Color = Color3.fromRGB(255, 255, 255)
             elements.BoxLines.BL1.Visible = true
 
             elements.BoxLines.BL2.From = bottomLeft
             elements.BoxLines.BL2.To = Vector2.new(bottomLeft.X, bottomLeft.Y - cornerLength)
+            elements.BoxLines.BL2.Color = Color3.fromRGB(255, 255, 255)
             elements.BoxLines.BL2.Visible = true
 
             -- Нижний правый угол
             elements.BoxLines.BR1.From = bottomRight
             elements.BoxLines.BR1.To = Vector2.new(bottomRight.X - cornerLength, bottomRight.Y)
+            elements.BoxLines.BR1.Color = Color3.fromRGB(255, 255, 255)
             elements.BoxLines.BR1.Visible = true
 
             elements.BoxLines.BR2.From = bottomRight
             elements.BoxLines.BR2.To = Vector2.new(bottomRight.X, bottomRight.Y - cornerLength)
+            elements.BoxLines.BR2.Color = Color3.fromRGB(255, 255, 255)
             elements.BoxLines.BR2.Visible = true
-        end
+        }
 
         -- Name
         if espSettings.ItemESP.Name and onScreen then
