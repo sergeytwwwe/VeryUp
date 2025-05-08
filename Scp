@@ -122,6 +122,32 @@ local espElements = {}
 -- Таблица элементов ESP для предметов
 local itemEspElements = {}
 
+-- Создание новой линии
+local function NewLine(color, thickness)
+    local line = Drawing.new("Line")
+    line.Visible = false
+    line.From = Vector2.new(0, 0)
+    line.To = Vector2.new(0, 0)
+    line.Color = color
+    line.Thickness = thickness
+    line.Transparency = 1
+    return line
+end
+
+-- Показать/скрыть элементы
+local function Vis(lib, state)
+    for i, v in pairs(lib) do
+        v.Visible = state
+    end
+end
+
+-- Изменить цвет элементов
+local function Colorize(lib, color)
+    for i, v in pairs(lib) do
+        v.Color = color
+    end
+end
+
 -- Создание ESP для игрока
 local function createESP(player)
     if espElements[player] then return end
@@ -130,12 +156,21 @@ local function createESP(player)
     if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 
     local elements = {
-        BoxLines = {},
+        BoxLines = {
+            TL1 = NewLine(getRoleColor(player), 2),
+            TL2 = NewLine(getRoleColor(player), 2),
+            TR1 = NewLine(getRoleColor(player), 2),
+            TR2 = NewLine(getRoleColor(player), 2),
+            BL1 = NewLine(getRoleColor(player), 2),
+            BL2 = NewLine(getRoleColor(player), 2),
+            BR1 = NewLine(getRoleColor(player), 2),
+            BR2 = NewLine(getRoleColor(player), 2)
+        },
         Name = Drawing.new("Text"),
         Distance = Drawing.new("Text"),
         Health = Drawing.new("Text"),
         HealthBar = Drawing.new("Line"),
-        HealthBarFrame = Drawing.new("Line"), -- Рамка для Health Bar
+        HealthBarFrame = Drawing.new("Line"),
         Weapon = Drawing.new("Text"),
         Role = Drawing.new("Text"),
         Skeleton = {},
@@ -195,7 +230,16 @@ local function createItemESP(item)
     if itemEspElements[item] then return end
 
     local elements = {
-        BoxLines = {},
+        BoxLines = {
+            TL1 = NewLine(Color3.fromRGB(255, 255, 255), 2),
+            TL2 = NewLine(Color3.fromRGB(255, 255, 255), 2),
+            TR1 = NewLine(Color3.fromRGB(255, 255, 255), 2),
+            TR2 = NewLine(Color3.fromRGB(255, 255, 255), 2),
+            BL1 = NewLine(Color3.fromRGB(255, 255, 255), 2),
+            BL2 = NewLine(Color3.fromRGB(255, 255, 255), 2),
+            BR1 = NewLine(Color3.fromRGB(255, 255, 255), 2),
+            BR2 = NewLine(Color3.fromRGB(255, 255, 255), 2)
+        },
         Name = Drawing.new("Text")
     }
 
@@ -302,114 +346,67 @@ local function updateESP()
         local roleColor = getRoleColor(player)
         local boxColor = roleColor
 
-        -- Фиксированный размер элементов (в пикселях)
+        -- Фиксированный размер бокса (в пикселях)
         local boxHeight = 100
         local boxWidth = 60
         local boxOffsetY = boxHeight / 2
+        local cornerLength = 15
 
         -- Очистка предыдущих линий бокса
         for _, line in pairs(elements.BoxLines) do
             line:Remove()
         end
-        elements.BoxLines = {}
 
         -- Box (2D только)
         if espSettings.Box and espSettings.BoxMode == "2D" and onScreen then
-            if espSettings.BoxStyle == "Default" then
-                -- Тень (outline) для Default Box
-                local shadow = Drawing.new("Square")
-                shadow.Filled = false
-                shadow.Thickness = 4
-                shadow.Size = Vector2.new(boxWidth + 6, boxHeight + 6)
-                shadow.Position = Vector2.new(rootPos.X - (boxWidth + 6) / 2, rootPos.Y - (boxHeight + 6) / 2)
-                shadow.Color = Color3.fromRGB(50, 50, 50)
-                shadow.Visible = true
-                table.insert(elements.BoxLines, shadow)
+            local topLeft = Vector2.new(rootPos.X - boxWidth / 2, rootPos.Y - boxOffsetY)
+            local topRight = Vector2.new(rootPos.X + boxWidth / 2, rootPos.Y - boxOffsetY)
+            local bottomLeft = Vector2.new(rootPos.X - boxWidth / 2, rootPos.Y + boxOffsetY)
+            local bottomRight = Vector2.new(rootPos.X + boxWidth / 2, rootPos.Y + boxOffsetY)
 
-                -- Основной бокс с градиентом
-                local box = Drawing.new("Square")
-                box.Filled = false
-                box.Thickness = 3
-                box.Size = Vector2.new(boxWidth, boxHeight)
-                box.Position = Vector2.new(rootPos.X - boxWidth / 2, rootPos.Y - boxOffsetY)
-                box.Color = boxColor
-                box.Visible = true
-                table.insert(elements.BoxLines, box)
-            elseif espSettings.BoxStyle == "Modern" then
-                local cornerLength = 15
-                local topLeft = Vector2.new(rootPos.X - boxWidth / 2, rootPos.Y - boxOffsetY)
-                local topRight = Vector2.new(rootPos.X + boxWidth / 2, rootPos.Y - boxOffsetY)
-                local bottomLeft = Vector2.new(rootPos.X - boxWidth / 2, rootPos.Y + boxOffsetY)
-                local bottomRight = Vector2.new(rootPos.X + boxWidth / 2, rootPos.Y + boxOffsetY)
+            -- Верхний левый угол
+            elements.BoxLines.TL1.From = topLeft
+            elements.BoxLines.TL1.To = Vector2.new(topLeft.X + cornerLength, topLeft.Y)
+            elements.BoxLines.TL1.Color = boxColor
+            elements.BoxLines.TL1.Visible = true
 
-                -- Верхний левый угол
-                local tl1 = Drawing.new("Line")
-                tl1.From = topLeft
-                tl1.To = Vector2.new(topLeft.X + cornerLength, topLeft.Y)
-                tl1.Color = boxColor
-                tl1.Thickness = 3
-                tl1.Visible = true
-                table.insert(elements.BoxLines, tl1)
+            elements.BoxLines.TL2.From = topLeft
+            elements.BoxLines.TL2.To = Vector2.new(topLeft.X, topLeft.Y + cornerLength)
+            elements.BoxLines.TL2.Color = boxColor
+            elements.BoxLines.TL2.Visible = true
 
-                local tl2 = Drawing.new("Line")
-                tl2.From = topLeft
-                tl2.To = Vector2.new(topLeft.X, topLeft.Y + cornerLength)
-                tl2.Color = boxColor
-                tl2.Thickness = 3
-                tl2.Visible = true
-                table.insert(elements.BoxLines, tl2)
+            -- Верхний правый угол
+            elements.BoxLines.TR1.From = topRight
+            elements.BoxLines.TR1.To = Vector2.new(topRight.X - cornerLength, topRight.Y)
+            elements.BoxLines.TR1.Color = boxColor
+            elements.BoxLines.TR1.Visible = true
 
-                -- Верхний правый угол
-                local tr1 = Drawing.new("Line")
-                tr1.From = topRight
-                tr1.To = Vector2.new(topRight.X - cornerLength, topRight.Y)
-                tr1.Color = boxColor
-                tr1.Thickness = 3
-                tr1.Visible = true
-                table.insert(elements.BoxLines, tr1)
+            elements.BoxLines.TR2.From = topRight
+            elements.BoxLines.TR2.To = Vector2.new(topRight.X, topRight.Y + cornerLength)
+            elements.BoxLines.TR2.Color = boxColor
+            elements.BoxLines.TR2.Visible = true
 
-                local tr2 = Drawing.new("Line")
-                tr2.From = topRight
-                tr2.To = Vector2.new(topRight.X, topRight.Y + cornerLength)
-                tr2.Color = boxColor
-                tr2.Thickness = 3
-                tr2.Visible = true
-                table.insert(elements.BoxLines, tr2)
+            -- Нижний левый угол
+            elements.BoxLines.BL1.From = bottomLeft
+            elements.BoxLines.BL1.To = Vector2.new(bottomLeft.X + cornerLength, bottomLeft.Y)
+            elements.BoxLines.BL1.Color = boxColor
+            elements.BoxLines.BL1.Visible = true
 
-                -- Нижний левый угол
-                local bl1 = Drawing.new("Line")
-                bl1.From = bottomLeft
-                bl1.To = Vector2.new(bottomLeft.X + cornerLength, bottomLeft.Y)
-                bl1.Color = boxColor
-                bl1.Thickness = 3
-                bl1.Visible = true
-                table.insert(elements.BoxLines, bl1)
+            elements.BoxLines.BL2.From = bottomLeft
+            elements.BoxLines.BL2.To = Vector2.new(bottomLeft.X, bottomLeft.Y - cornerLength)
+            elements.BoxLines.BL2.Color = boxColor
+            elements.BoxLines.BL2.Visible = true
 
-                local bl2 = Drawing.new("Line")
-                bl2.From = bottomLeft
-                bl2.To = Vector2.new(bottomLeft.X, bottomLeft.Y - cornerLength)
-                bl2.Color = boxColor
-                bl2.Thickness = 3
-                bl2.Visible = true
-                table.insert(elements.BoxLines, bl2)
+            -- Нижний правый угол
+            elements.BoxLines.BR1.From = bottomRight
+            elements.BoxLines.BR1.To = Vector2.new(bottomRight.X - cornerLength, bottomRight.Y)
+            elements.BoxLines.BR1.Color = boxColor
+            elements.BoxLines.BR1.Visible = true
 
-                -- Нижний правый угол
-                local br1 = Drawing.new("Line")
-                br1.From = bottomRight
-                br1.To = Vector2.new(bottomRight.X - cornerLength, bottomRight.Y)
-                br1.Color = boxColor
-                br1.Thickness = 3
-                br1.Visible = true
-                table.insert(elements.BoxLines, br1)
-
-                local br2 = Drawing.new("Line")
-                br2.From = bottomRight
-                br2.To = Vector2.new(bottomRight.X, bottomRight.Y - cornerLength)
-                br2.Color = boxColor
-                br2.Thickness = 3
-                br2.Visible = true
-                table.insert(elements.BoxLines, br2)
-            end
+            elements.BoxLines.BR2.From = bottomRight
+            elements.BoxLines.BR2.To = Vector2.new(bottomRight.X, bottomRight.Y - cornerLength)
+            elements.BoxLines.BR2.Color = boxColor
+            elements.BoxLines.BR2.Visible = true
         end
 
         -- Name
@@ -455,7 +452,7 @@ local function updateESP()
             local barWidth = 6
             local barHeight = boxHeight
             local healthRatio = health / maxHealth
-            local healthColor = Color3.fromRGB(255 * (1 - healthRatio), 255 * healthRatio, 0) -- Красный -> Зелёный
+            local healthColor = Color3.fromRGB(255 * (1 - healthRatio), 255 * healthRatio, 0)
 
             -- Рамка Health Bar
             elements.HealthBarFrame.From = Vector2.new(rootPos.X + boxWidth / 2 + 6, rootPos.Y - boxOffsetY)
@@ -544,7 +541,7 @@ local function updateESP()
     end
 end
 
--- Обновление Item ESP (независимо от ESP On)
+-- Обновление Item ESP
 local function updateItemESP()
     if not espSettings.ItemESP.Enabled then
         for item, _ in pairs(itemEspElements) do
@@ -580,102 +577,59 @@ local function updateItemESP()
             continue
         end
 
-        local boxHeight = 20 -- Маленький бокс для предметов
+        -- Фиксированный маленький размер бокса для предметов
+        local boxHeight = 20
         local boxWidth = 30
         local boxOffsetY = boxHeight / 2
+        local cornerLength = 6
 
         -- Очистка предыдущих линий бокса
         for _, line in pairs(elements.BoxLines) do
             line:Remove()
         end
-        elements.BoxLines = {}
 
         -- Box
         if espSettings.ItemESP.Box and onScreen then
-            if espSettings.ItemESP.BoxStyle == "Default" then
-                local box = Drawing.new("Square")
-                box.Filled = false
-                box.Thickness = 2
-                box.Size = Vector2.new(boxWidth, boxHeight)
-                box.Position = Vector2.new(pos.X - boxWidth / 2, pos.Y - boxOffsetY)
-                box.Color = Color3.fromRGB(255, 255, 255)
-                box.Visible = true
-                table.insert(elements.BoxLines, box)
-            elseif espSettings.ItemESP.BoxStyle == "Modern" then
-                local cornerLength = 6
-                local topLeft = Vector2.new(pos.X - boxWidth / 2, pos.Y - boxOffsetY)
-                local topRight = Vector2.new(pos.X + boxWidth / 2, pos.Y - boxOffsetY)
-                local bottomLeft = Vector2.new(pos.X - boxWidth / 2, pos.Y + boxOffsetY)
-                local bottomRight = Vector2.new(pos.X + boxWidth / 2, pos.Y + boxOffsetY)
+            local topLeft = Vector2.new(pos.X - boxWidth / 2, pos.Y - boxOffsetY)
+            local topRight = Vector2.new(pos.X + boxWidth / 2, pos.Y - boxOffsetY)
+            local bottomLeft = Vector2.new(pos.X - boxWidth / 2, pos.Y + boxOffsetY)
+            local bottomRight = Vector2.new(pos.X + boxWidth / 2, pos.Y + boxOffsetY)
 
-                -- Верхний левый угол
-                local tl1 = Drawing.new("Line")
-                tl1.From = topLeft
-                tl1.To = Vector2.new(topLeft.X + cornerLength, topLeft.Y)
-                tl1.Color = Color3.fromRGB(255, 255, 255)
-                tl1.Thickness = 2
-                tl1.Visible = true
-                table.insert(elements.BoxLines, tl1)
+            -- Верхний левый угол
+            elements.BoxLines.TL1.From = topLeft
+            elements.BoxLines.TL1.To = Vector2.new(topLeft.X + cornerLength, topLeft.Y)
+            elements.BoxLines.TL1.Visible = true
 
-                local tl2 = Drawing.new("Line")
-                tl2.From = topLeft
-                tl2.To = Vector2.new(topLeft.X, topLeft.Y + cornerLength)
-                tl2.Color = Color3.fromRGB(255, 255, 255)
-                tl2.Thickness = 2
-                tl2.Visible = true
-                table.insert(elements.BoxLines, tl2)
+            elements.BoxLines.TL2.From = topLeft
+            elements.BoxLines.TL2.To = Vector2.new(topLeft.X, topLeft.Y + cornerLength)
+            elements.BoxLines.TL2.Visible = true
 
-                -- Верхний правый угол
-                local tr1 = Drawing.new("Line")
-                tr1.From = topRight
-                tr1.To = Vector2.new(topRight.X - cornerLength, topRight.Y)
-                tr1.Color = Color3.fromRGB(255, 255, 255)
-                tr1.Thickness = 2
-                tr1.Visible = true
-                table.insert(elements.BoxLines, tr1)
+            -- Верхний правый угол
+            elements.BoxLines.TR1.From = topRight
+            elements.BoxLines.TR1.To = Vector2.new(topRight.X - cornerLength, topRight.Y)
+            elements.BoxLines.TR1.Visible = true
 
-                local tr2 = Drawing.new("Line")
-                tr2.From = topRight
-                tr2.To = Vector2.new(topRight.X, topRight.Y + cornerLength)
-                tr2.Color = Color3.fromRGB(255, 255, 255)
-                tr2.Thickness = 2
-                tr2.Visible = true
-                table.insert(elements.BoxLines, tr2)
+            elements.BoxLines.TR2.From = topRight
+            elements.BoxLines.TR2.To = Vector2.new(topRight.X, topRight.Y + cornerLength)
+            elements.BoxLines.TR2.Visible = true
 
-                -- Нижний левый угол
-                local bl1 = Drawing.new("Line")
-                bl1.From = bottomLeft
-                bl1.To = Vector2.new(bottomLeft.X + cornerLength, bottomLeft.Y)
-                bl1.Color = Color3.fromRGB(255, 255, 255)
-                bl1.Thickness = 2
-                bl1.Visible = true
-                table.insert(elements.BoxLines, bl1)
+            -- Нижний левый угол
+            elements.BoxLines.BL1.From = bottomLeft
+            elements.BoxLines.BL1.To = Vector2.new(bottomLeft.X + cornerLength, bottomLeft.Y)
+            elements.BoxLines.BL1.Visible = true
 
-                local bl2 = Drawing.new("Line")
-                bl2.From = bottomLeft
-                bl2.To = Vector2.new(bottomLeft.X, bottomLeft.Y - cornerLength)
-                bl2.Color = Color3.fromRGB(255, 255, 255)
-                bl2.Thickness = 2
-                bl2.Visible = true
-                table.insert(elements.BoxLines, bl2)
+            elements.BoxLines.BL2.From = bottomLeft
+            elements.BoxLines.BL2.To = Vector2.new(bottomLeft.X, bottomLeft.Y - cornerLength)
+            elements.BoxLines.BL2.Visible = true
 
-                -- Нижний правый угол
-                local br1 = Drawing.new("Line")
-                br1.From = bottomRight
-                br1.To = Vector2.new(bottomRight.X - cornerLength, bottomRight.Y)
-                br1.Color = Color3.fromRGB(255, 255, 255)
-                br1.Thickness = 2
-                br1.Visible = true
-                table.insert(elements.BoxLines, br1)
+            -- Нижний правый угол
+            elements.BoxLines.BR1.From = bottomRight
+            elements.BoxLines.BR1.To = Vector2.new(bottomRight.X - cornerLength, bottomRight.Y)
+            elements.BoxLines.BR1.Visible = true
 
-                local br2 = Drawing.new("Line")
-                br2.From = bottomRight
-                br2.To = Vector2.new(bottomRight.X, bottomRight.Y - cornerLength)
-                br2.Color = Color3.fromRGB(255, 255, 255)
-                br2.Thickness = 2
-                br2.Visible = true
-                table.insert(elements.BoxLines, br2)
-            end
+            elements.BoxLines.BR2.From = bottomRight
+            elements.BoxLines.BR2.To = Vector2.new(bottomRight.X, bottomRight.Y - cornerLength)
+            elements.BoxLines.BR2.Visible = true
         end
 
         -- Name
@@ -912,7 +866,7 @@ ItemESP:Checkbox({
                 removeItemESP(item)
             end
         else
-            initializeItemESP() -- Инициализация для существующих предметов
+            initializeItemESP()
         end
         logItems()
     end
