@@ -119,7 +119,7 @@ local Settings = {
 }
 
 -- Основная функция ESP для игроков
-local function MainESP(model)
+local function MainESP(model, services)
     if not model then return end
     local Library = {
         Top = NewLine(Settings.Colors.Box, 2),
@@ -146,14 +146,14 @@ local function MainESP(model)
 
     local function Updater()
         local connection
-        connection = RunService.RenderStepped:Connect(function()
+        connection = services.RunService.RenderStepped:Connect(function()
             if not Settings.Enabled then
                 Vis(Library, false)
                 return
             end
 
-            local player = Players:GetPlayerFromCharacter(model)
-            if not model or not model.Parent or (player and player == LocalPlayer) then
+            local player = services.Players:GetPlayerFromCharacter(model)
+            if not model or not model.Parent or (player and player == services.LocalPlayer) then
                 for _, v in pairs(Library) do
                     if v.Remove then v:Remove() end
                 end
@@ -181,7 +181,7 @@ local function MainESP(model)
                 return
             end
 
-            local localRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local localRoot = services.LocalPlayer.Character and services.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             local distance = localRoot and (localRoot.Position - rootPart.Position).Magnitude or math.huge
             if distance > Settings.MaxDistance then
                 Vis(Library, false)
@@ -190,8 +190,8 @@ local function MainESP(model)
 
             local topPos = rootPart.Position + Vector3.new(0, 3, 0)
             local bottomPos = rootPart.Position - Vector3.new(0, 3, 0)
-            local topScreen, topOnScreen = Camera:WorldToViewportPoint(topPos)
-            local bottomScreen, bottomOnScreen = Camera:WorldToViewportPoint(bottomPos)
+            local topScreen, topOnScreen = services.Camera:WorldToViewportPoint(topPos)
+            local bottomScreen, bottomOnScreen = services.Camera:WorldToViewportPoint(bottomPos)
 
             if not topOnScreen or not bottomOnScreen then
                 Vis(Library, false)
@@ -383,7 +383,7 @@ local function MainESP(model)
 end
 
 -- Основная функция Item ESP (только в Workspace)
-local function MainItemESP(item)
+local function MainItemESP(item, services)
     if not item then return end
     repeat wait() until item:FindFirstChild("Handle") or item:FindFirstChildWhichIsA("BasePart")
 
@@ -405,13 +405,13 @@ local function MainItemESP(item)
 
     local function Updater()
         local connection
-        connection = RunService.RenderStepped:Connect(function()
+        connection = services.RunService.RenderStepped:Connect(function()
             if not Settings.ItemESP.Enabled then
                 Vis(Library, false)
                 return
             end
 
-            if not item or not item.Parent or item.Parent == LocalPlayer.Character then
+            if not item or not item.Parent or item.Parent == services.LocalPlayer.Character then
                 for _, v in pairs(Library) do
                     if v.Remove then v:Remove() end
                 end
@@ -425,14 +425,14 @@ local function MainItemESP(item)
                 return
             end
 
-            local localRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local localRoot = services.LocalPlayer.Character and services.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             local distance = localRoot and (localRoot.Position - handle.Position).Magnitude or math.huge
             if distance > Settings.ItemESP.MaxDistance then
                 Vis(Library, false)
                 return
             end
 
-            local pos, onScreen = Camera:WorldToViewportPoint(handle.Position)
+            local pos, onScreen = services.Camera:WorldToViewportPoint(handle.Position)
             if not onScreen then
                 Vis(Library, false)
                 return
@@ -505,7 +505,7 @@ local function MainItemESP(item)
 
                     Library.BL1.From = BL
                     Library.BL1.To = Vector2.new(BL.X + offset, BL.Y)
-                    Library.BL1.Color = Color3.fromRGB(255, 554255, 255)
+                    Library.BL1.Color = Color3.fromRGB(255, 255, 255)
                     Library.BL1.Thickness = thickness
                     Library.BL1.Visible = true
 
@@ -547,12 +547,12 @@ local function MainItemESP(item)
 end
 
 -- Основная функция Room ESP
-local function MainRoomESP(roomName, roomData)
+local function MainRoomESP(roomName, roomData, services)
     if not roomData then return end
 
     local function FindResetPoint()
         local pathParts = roomData.Path:split(":")
-        local current = Workspace
+        local current = services.Workspace
         for _, part in ipairs(pathParts) do
             current = current:FindFirstChild(part)
             if not current then return nil end
@@ -570,7 +570,7 @@ local function MainRoomESP(roomName, roomData)
 
     local function Updater()
         local connection
-        connection = RunService.RenderStepped:Connect(function()
+        connection = services.RunService.RenderStepped:Connect(function()
             if not Settings.RoomESP.Enabled then
                 Vis(Library, false)
                 return
@@ -587,14 +587,14 @@ local function MainRoomESP(roomName, roomData)
                 end
             end
 
-            local localRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local localRoot = services.LocalPlayer.Character and services.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             local distance = localRoot and (localRoot.Position - resetPoint.Position).Magnitude or math.huge
             if distance > Settings.RoomESP.MaxDistance then
                 Vis(Library, false)
                 return
             end
 
-            local pos, onScreen = Camera:WorldToViewportPoint(resetPoint.Position)
+            local pos, onScreen = services.Camera:WorldToViewportPoint(resetPoint.Position)
             if not onScreen then
                 Vis(Library, false)
                 return
@@ -627,63 +627,75 @@ local function MainRoomESP(roomName, roomData)
 end
 
 -- Инициализация ESP для игроков
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then
-        if player.Character then
-            coroutine.wrap(MainESP)(player.Character)
+local function initPlayerESP(services)
+    for _, player in pairs(services.Players:GetPlayers()) do
+        if player ~= services.LocalPlayer then
+            if player.Character then
+                coroutine.wrap(MainESP)(player.Character, services)
+            end
+            player.CharacterAdded:Connect(function(character)
+                coroutine.wrap(MainESP)(character, services)
+            end)
         end
-        player.CharacterAdded:Connect(function(character)
-            coroutine.wrap(MainESP)(character)
-        end)
     end
-end
 
-Players.PlayerAdded:Connect(function(player)
-    if player == LocalPlayer then return end
-    player.CharacterAdded:Connect(function(character)
-        coroutine.wrap(MainESP)(character)
+    services.Players.PlayerAdded:Connect(function(player)
+        if player == services.LocalPlayer then return end
+        player.CharacterAdded:Connect(function(character)
+            coroutine.wrap(MainESP)(character, services)
+        end)
     end)
 end
 
 -- Инициализация Item ESP
-for _, item in pairs(Workspace:GetDescendants()) do
-    if item:IsA("Tool") and item.Parent == Workspace then
-        coroutine.wrap(MainItemESP)(item)
+local function initItemESP(services)
+    for _, item in pairs(services.Workspace:GetDescendants()) do
+        if item:IsA("Tool") and item.Parent == services.Workspace then
+            coroutine.wrap(MainItemESP)(item, services)
+        end
     end
-end
 
-Workspace.DescendantAdded:Connect(function(descendant)
-    if descendant:IsA("Tool") and descendant.Parent == Workspace then
-        coroutine.wrap(MainItemESP)(descendant)
-    end
-end)
+    services.Workspace.DescendantAdded:Connect(function(descendant)
+        if descendant:IsA("Tool") and descendant.Parent == services.Workspace then
+            coroutine.wrap(MainItemESP)(descendant, services)
+        end
+    end)
+end
 
 -- Инициализация Room ESP
-for roomName, roomData in pairs(Settings.RoomESP.Rooms) do
-    coroutine.wrap(MainRoomESP)(roomName, roomData)
-end
-
-Workspace.DescendantAdded:Connect(function(descendant)
-    if not Settings.RoomESP.Enabled then return end
+local function initRoomESP(services)
     for roomName, roomData in pairs(Settings.RoomESP.Rooms) do
-        local pathParts = roomData.Path:split(":")
-        local match = true
-        local current = Workspace
-        for _, part in ipairs(pathParts) do
-            current = current:FindFirstChild(part)
-            if not current then
-                match = false
-                break
+        coroutine.wrap(MainRoomESP)(roomName, roomData, services)
+    end
+
+    services.Workspace.DescendantAdded:Connect(function(descendant)
+        if not Settings.RoomESP.Enabled then return end
+        for roomName, roomData in pairs(Settings.RoomESP.Rooms) do
+            local pathParts = roomData.Path:split(":")
+            local match = true
+            local current = services.Workspace
+            for _, part in ipairs(pathParts) do
+                current = current:FindFirstChild(part)
+                if not current then
+                    match = false
+                    break
+                end
+            end
+            if match and current == descendant then
+                coroutine.wrap(MainRoomESP)(roomName, roomData, services)
             end
         end
-        if match and current == descendant then
-            coroutine.wrap(MainRoomESP)(roomName, roomData)
-        end
-    end
-end)
+    end)
+end
 
--- UI Elements
-return function(VisualContent)
+-- Основная функция, которая будет вызвана из loader.lua
+return function(VisualContent, services)
+    -- Инициализация всех типов ESP
+    initPlayerESP(services)
+    initItemESP(services)
+    initRoomESP(services)
+
+    -- UI Elements
     local GeneralSettings = VisualContent:CollapsingHeader({ Title = "General Settings" })
     GeneralSettings:Checkbox({ Label = "ESP On", Value = false, Callback = function(_, value) Settings.Enabled = value end })
     GeneralSettings:SliderInt({ Label = "Max Distance", Value = 1000, Minimum = 100, Maximum = 5000, Callback = function(_, value) Settings.MaxDistance = value end })
