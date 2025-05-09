@@ -29,7 +29,7 @@ end
 
 -- Получение роли игрока
 local function getPlayerRole(player)
-    return player.Team and player.Name or "Unknown"
+    return player.Team and player.Team.Name or "Unknown"
 end
 
 -- Отношения команд
@@ -66,15 +66,16 @@ local function shouldShowESP(player, services, settings)
     if not player then return false end
     local localRole = getPlayerRole(services.LocalPlayer)
     local playerRole = getPlayerRole(player)
-    if playerRole == "SCP" then return true end
-    if not settings.ShowAllies then return false end
+    local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+    if humanoid and humanoid.Health <= 0 then return false end -- Исключение мёртвых
+    if not settings.TeamCheck then return true end -- По умолчанию показывать всех
     local teamData = TeamRelations[localRole] or { Allies = {}, Enemies = {} }
-    return table.find(teamData.Allies, playerRole) or playerRole == localRole
+    return table.find(teamData.Enemies, playerRole) ~= nil
 end
 
 -- Настройки
 local Settings = {
-    Enabled = false,
+    Enabled = true, -- По умолчанию включено
     MaxDistance = 1000,
     Box = true,
     BoxStyle = "Modern",
@@ -83,7 +84,7 @@ local Settings = {
     Health = false,
     Weapon = false,
     Role = false,
-    ShowAllies = true,
+    TeamCheck = false, -- Переименовано с ShowAllies, по умолчанию выключено
     ItemESP = { Enabled = false, Box = false, BoxStyle = "Modern", Name = false, MaxDistance = 1000 },
     RoomESP = { 
         Enabled = false, 
@@ -694,7 +695,7 @@ end
 return function(VisualContent, services)
     -- Настройки
     local Settings = {
-        Enabled = false,
+        Enabled = true, -- По умолчанию включено
         MaxDistance = 1000,
         Box = true,
         BoxStyle = "Modern",
@@ -703,7 +704,7 @@ return function(VisualContent, services)
         Health = false,
         Weapon = false,
         Role = false,
-        ShowAllies = true,
+        TeamCheck = false, -- Переименовано с ShowAllies, по умолчанию выключено
         ItemESP = { Enabled = false, Box = false, BoxStyle = "Modern", Name = false, MaxDistance = 1000 },
         RoomESP = { 
             Enabled = false, 
@@ -758,9 +759,9 @@ return function(VisualContent, services)
         return
     end
 
-    GeneralSettings:Checkbox({ Label = "ESP On", Value = false, Callback = function(_, value) Settings.Enabled = value end })
+    GeneralSettings:Checkbox({ Label = "ESP On", Value = true, Callback = function(_, value) Settings.Enabled = value end })
     GeneralSettings:SliderInt({ Label = "Max Distance", Value = 1000, Minimum = 100, Maximum = 5000, Callback = function(_, value) Settings.MaxDistance = value end })
-    GeneralSettings:Checkbox({ Label = "Show Allies", Value = true, Callback = function(_, value) Settings.ShowAllies = value end })
+    GeneralSettings:Checkbox({ Label = "Team Check", Value = false, Callback = function(_, value) Settings.TeamCheck = value end }) -- Переименовано
 
     local VisualElements = VisualContent:CollapsingHeader({ Title = "Visual Elements" })
     VisualElements:Checkbox({ Label = "Box ESP", Value = true, Callback = function(_, value) Settings.Box = value end })
