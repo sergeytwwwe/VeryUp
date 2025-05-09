@@ -62,7 +62,7 @@ local function getRoleColor(player)
 end
 
 -- Проверка команды для Team Check
-local function shouldShowESP(player)
+local function shouldShowESP(player, services)
     if not player then return false end
     local localRole = getPlayerRole(services.LocalPlayer)
     local playerRole = getPlayerRole(player)
@@ -178,7 +178,7 @@ local function MainESP(model, services)
                 end
             end
 
-            if player and not shouldShowESP(player) then
+            if player and not shouldShowESP(player, services) then
                 Vis(Library, false)
                 return
             end
