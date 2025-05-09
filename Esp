@@ -29,7 +29,7 @@ end
 
 -- Получение роли игрока
 local function getPlayerRole(player)
-    return player.Team and player.Team.Name or "Unknown"
+    return player.Team and player.Name or "Unknown"
 end
 
 -- Отношения команд
@@ -62,12 +62,12 @@ local function getRoleColor(player)
 end
 
 -- Проверка команды для Team Check
-local function shouldShowESP(player, services)
+local function shouldShowESP(player, services, settings)
     if not player then return false end
     local localRole = getPlayerRole(services.LocalPlayer)
     local playerRole = getPlayerRole(player)
     if playerRole == "SCP" then return true end
-    if not Settings.ShowAllies then return false end
+    if not settings.ShowAllies then return false end
     local teamData = TeamRelations[localRole] or { Allies = {}, Enemies = {} }
     return table.find(teamData.Allies, playerRole) or playerRole == localRole
 end
@@ -122,21 +122,21 @@ local Settings = {
 }
 
 -- Основная функция ESP для игроков
-local function MainESP(model, services)
+local function MainESP(model, services, settings)
     if not model then return end
     local Library = {
-        Top = NewLine(Settings.Colors.Box, 2),
-        Bottom = NewLine(Settings.Colors.Box, 2),
-        Left = NewLine(Settings.Colors.Box, 2),
-        Right = NewLine(Settings.Colors.Box, 2),
-        TL1 = NewLine(Settings.Colors.Box, 2),
-        TL2 = NewLine(Settings.Colors.Box, 2),
-        TR1 = NewLine(Settings.Colors.Box, 2),
-        TR2 = NewLine(Settings.Colors.Box, 2),
-        BL1 = NewLine(Settings.Colors.Box, 2),
-        BL2 = NewLine(Settings.Colors.Box, 2),
-        BR1 = NewLine(Settings.Colors.Box, 2),
-        BR2 = NewLine(Settings.Colors.Box, 2),
+        Top = NewLine(settings.Colors.Box, 2),
+        Bottom = NewLine(settings.Colors.Box, 2),
+        Left = NewLine(settings.Colors.Box, 2),
+        Right = NewLine(settings.Colors.Box, 2),
+        TL1 = NewLine(settings.Colors.Box, 2),
+        TL2 = NewLine(settings.Colors.Box, 2),
+        TR1 = NewLine(settings.Colors.Box, 2),
+        TR2 = NewLine(settings.Colors.Box, 2),
+        BL1 = NewLine(settings.Colors.Box, 2),
+        BL2 = NewLine(settings.Colors.Box, 2),
+        BR1 = NewLine(settings.Colors.Box, 2),
+        BR2 = NewLine(settings.Colors.Box, 2),
         Name = NewText(),
         Distance = NewText(),
         Health = NewText(),
@@ -150,7 +150,7 @@ local function MainESP(model, services)
     local function Updater()
         local connection
         connection = services.RunService.RenderStepped:Connect(function()
-            if not Settings.Enabled then
+            if not settings.Enabled then
                 Vis(Library, false)
                 return
             end
@@ -178,14 +178,14 @@ local function MainESP(model, services)
                 end
             end
 
-            if player and not shouldShowESP(player, services) then
+            if player and not shouldShowESP(player, services, settings) then
                 Vis(Library, false)
                 return
             end
 
             local localRoot = services.LocalPlayer.Character and services.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             local distance = localRoot and (localRoot.Position - rootPart.Position).Magnitude or math.huge
-            if distance > Settings.MaxDistance then
+            if distance > settings.MaxDistance then
                 Vis(Library, false)
                 return
             end
@@ -213,8 +213,8 @@ local function MainESP(model, services)
             local thickness = math.clamp(1 / distance * 100, 1, 4)
             local offset = math.min(height * 0.3, 10)
 
-            if Settings.Box then
-                if Settings.BoxStyle == "Default" then
+            if settings.Box then
+                if settings.BoxStyle == "Default" then
                     Library.Top.From = TL
                     Library.Top.To = TR
                     Library.Top.Color = boxColor
@@ -300,42 +300,42 @@ local function MainESP(model, services)
             local topOffset = 0
             local bottomOffset = 0
 
-            if Settings.Role and player then
+            if settings.Role and player then
                 Library.Role.Text = getPlayerRole(player)
                 Library.Role.Position = Vector2.new(centerXText, TL.Y - textSpacing - topOffset)
-                Library.Role.Color = Settings.Colors.Role
+                Library.Role.Color = settings.Colors.Role
                 Library.Role.Visible = true
                 topOffset = topOffset + textSpacing
             else
                 Library.Role.Visible = false
             end
 
-            if Settings.Name and player then
+            if settings.Name and player then
                 Library.Name.Text = player.Name
                 Library.Name.Position = Vector2.new(centerXText, TL.Y - textSpacing - topOffset)
-                Library.Name.Color = Settings.Colors.Name
+                Library.Name.Color = settings.Colors.Name
                 Library.Name.Visible = true
                 topOffset = topOffset + textSpacing
             else
                 Library.Name.Visible = false
             end
 
-            if Settings.Distance then
+            if settings.Distance then
                 Library.Distance.Text = math.floor(distance) .. " studs"
                 Library.Distance.Position = Vector2.new(centerXText, BL.Y + textSpacing - bottomOffset)
-                Library.Distance.Color = Settings.Colors.Distance
+                Library.Distance.Color = settings.Colors.Distance
                 Library.Distance.Visible = true
                 bottomOffset = bottomOffset + textSpacing
             else
                 Library.Distance.Visible = false
             end
 
-            if Settings.Health then
+            if settings.Health then
                 local health = humanoid.Health
                 local maxHealth = humanoid.MaxHealth
                 Library.Health.Text = health <= 0 and "Dead" or math.floor(health) .. "/" .. math.floor(maxHealth)
                 Library.Health.Position = Vector2.new(centerXText, BL.Y + textSpacing + bottomOffset)
-                Library.Health.Color = Settings.Colors.Health
+                Library.Health.Color = settings.Colors.Health
                 Library.Health.Visible = true
                 bottomOffset = bottomOffset + textSpacing
 
@@ -370,11 +370,11 @@ local function MainESP(model, services)
                 Library.HealthBorderRight.Visible = false
             end
 
-            if Settings.Weapon then
+            if settings.Weapon then
                 local tool = model:FindFirstChildOfClass("Tool")
                 Library.Weapon.Text = tool and tool.Name or "No Weapon"
                 Library.Weapon.Position = Vector2.new(centerXText, BL.Y + textSpacing + bottomOffset)
-                Library.Weapon.Color = Settings.Colors.Weapon
+                Library.Weapon.Color = settings.Colors.Weapon
                 Library.Weapon.Visible = true
             else
                 Library.Weapon.Visible = false
@@ -385,7 +385,7 @@ local function MainESP(model, services)
 end
 
 -- Основная функция Item ESP
-local function MainItemESP(item, services)
+local function MainItemESP(item, services, settings)
     if not item then return end
     repeat wait() until item:FindFirstChild("Handle") or item:FindFirstChildWhichIsA("BasePart")
 
@@ -408,7 +408,7 @@ local function MainItemESP(item, services)
     local function Updater()
         local connection
         connection = services.RunService.RenderStepped:Connect(function()
-            if not Settings.ItemESP.Enabled then
+            if not settings.ItemESP.Enabled then
                 Vis(Library, false)
                 return
             end
@@ -429,7 +429,7 @@ local function MainItemESP(item, services)
 
             local localRoot = services.LocalPlayer.Character and services.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             local distance = localRoot and (localRoot.Position - handle.Position).Magnitude or math.huge
-            if distance > Settings.ItemESP.MaxDistance then
+            if distance > settings.ItemESP.MaxDistance then
                 Vis(Library, false)
                 return
             end
@@ -453,8 +453,8 @@ local function MainItemESP(item, services)
             local thickness = math.clamp(1 / distance * 100, 1, 4)
             local offset = math.min(boxHeight * 0.3, 10)
 
-            if Settings.ItemESP.Box then
-                if Settings.ItemESP.BoxStyle == "Default" then
+            if settings.ItemESP.Box then
+                if settings.ItemESP.BoxStyle == "Default" then
                     Library.Top.From = TL
                     Library.Top.To = TR
                     Library.Top.Color = Color3.fromRGB(255, 255, 255)
@@ -535,7 +535,7 @@ local function MainItemESP(item, services)
                 Vis(Library, false)
             end
 
-            if Settings.ItemESP.Name then
+            if settings.ItemESP.Name then
                 Library.Name.Text = item.Name
                 Library.Name.Position = Vector2.new(pos.X, pos.Y - boxOffsetY - 20)
                 Library.Name.Color = Color3.fromRGB(255, 255, 255)
@@ -549,7 +549,7 @@ local function MainItemESP(item, services)
 end
 
 -- Основная функция Room ESP
-local function MainRoomESP(roomName, roomData, services)
+local function MainRoomESP(roomName, roomData, services, settings)
     if not roomData then return end
 
     local function FindResetPoint()
@@ -573,7 +573,7 @@ local function MainRoomESP(roomName, roomData, services)
     local function Updater()
         local connection
         connection = services.RunService.RenderStepped:Connect(function()
-            if not Settings.RoomESP.Enabled then
+            if not settings.RoomESP.Enabled then
                 Vis(Library, false)
                 return
             end
@@ -591,7 +591,7 @@ local function MainRoomESP(roomName, roomData, services)
 
             local localRoot = services.LocalPlayer.Character and services.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             local distance = localRoot and (localRoot.Position - resetPoint.Position).Magnitude or math.huge
-            if distance > Settings.RoomESP.MaxDistance then
+            if distance > settings.RoomESP.MaxDistance then
                 Vis(Library, false)
                 return
             end
@@ -605,7 +605,7 @@ local function MainRoomESP(roomName, roomData, services)
             local textSpacing = 15
             local offset = 0
 
-            if Settings.RoomESP.Name then
+            if settings.RoomESP.Name then
                 Library.Name.Text = roomData.Name
                 Library.Name.Position = Vector2.new(pos.X, pos.Y - textSpacing - offset)
                 Library.Name.Color = roomData.Color
@@ -615,7 +615,7 @@ local function MainRoomESP(roomName, roomData, services)
                 Library.Name.Visible = false
             end
 
-            if Settings.RoomESP.Distance then
+            if settings.RoomESP.Distance then
                 Library.Distance.Text = math.floor(distance) .. " studs"
                 Library.Distance.Position = Vector2.new(pos.X, pos.Y - textSpacing - offset)
                 Library.Distance.Color = roomData.Color
@@ -629,14 +629,14 @@ local function MainRoomESP(roomName, roomData, services)
 end
 
 -- Инициализация ESP для игроков
-local function initPlayerESP(services)
+local function initPlayerESP(services, settings)
     for _, player in pairs(services.Players:GetPlayers()) do
         if player ~= services.LocalPlayer then
             if player.Character then
-                coroutine.wrap(MainESP)(player.Character, services)
+                coroutine.wrap(MainESP)(player.Character, services, settings)
             end
             player.CharacterAdded:Connect(function(character)
-                coroutine.wrap(MainESP)(character, services)
+                coroutine.wrap(MainESP)(character, services, settings)
             end)
         end
     end
@@ -644,35 +644,35 @@ local function initPlayerESP(services)
     services.Players.PlayerAdded:Connect(function(player)
         if player == services.LocalPlayer then return end
         player.CharacterAdded:Connect(function(character)
-            coroutine.wrap(MainESP)(character, services)
+            coroutine.wrap(MainESP)(character, services, settings)
         end)
     end)
 end
 
 -- Инициализация Item ESP
-local function initItemESP(services)
+local function initItemESP(services, settings)
     for _, item in pairs(services.Workspace:GetDescendants()) do
         if item:IsA("Tool") and item.Parent == services.Workspace then
-            coroutine.wrap(MainItemESP)(item, services)
+            coroutine.wrap(MainItemESP)(item, services, settings)
         end
     end
 
     services.Workspace.DescendantAdded:Connect(function(descendant)
         if descendant:IsA("Tool") and descendant.Parent == services.Workspace then
-            coroutine.wrap(MainItemESP)(descendant, services)
+            coroutine.wrap(MainItemESP)(descendant, services, settings)
         end
     end)
 end
 
 -- Инициализация Room ESP
-local function initRoomESP(services)
-    for roomName, roomData in pairs(Settings.RoomESP.Rooms) do
-        coroutine.wrap(MainRoomESP)(roomName, roomData, services)
+local function initRoomESP(services, settings)
+    for roomName, roomData in pairs(settings.RoomESP.Rooms) do
+        coroutine.wrap(MainRoomESP)(roomName, roomData, services, settings)
     end
 
     services.Workspace.DescendantAdded:Connect(function(descendant)
-        if not Settings.RoomESP.Enabled then return end
-        for roomName, roomData in pairs(Settings.RoomESP.Rooms) do
+        if not settings.RoomESP.Enabled then return end
+        for roomName, roomData in pairs(settings.RoomESP.Rooms) do
             local pathParts = roomData.Path:split(":")
             local match = true
             local current = services.Workspace
@@ -684,7 +684,7 @@ local function initRoomESP(services)
                 end
             end
             if match and current == descendant then
-                coroutine.wrap(MainRoomESP)(roomName, roomData, services)
+                coroutine.wrap(MainRoomESP)(roomName, roomData, services, settings)
             end
         end
     end)
@@ -692,10 +692,59 @@ end
 
 -- Основная функция, которая будет вызвана из loader.lua
 return function(VisualContent, services)
+    -- Настройки
+    local Settings = {
+        Enabled = false,
+        MaxDistance = 1000,
+        Box = true,
+        BoxStyle = "Modern",
+        Name = true,
+        Distance = false,
+        Health = false,
+        Weapon = false,
+        Role = false,
+        ShowAllies = true,
+        ItemESP = { Enabled = false, Box = false, BoxStyle = "Modern", Name = false, MaxDistance = 1000 },
+        RoomESP = { 
+            Enabled = false, 
+            Name = false, 
+            Distance = false, 
+            MaxDistance = 1000, 
+            Rooms = {
+                ["914"] = { Path = "Light Containment Zone:914:Room:ResetPoint", Name = "Scp 914", Color = Color3.fromRGB(255, 255, 0) },
+                ["CheckptB"] = { Path = "Light Containment Zone:CheckptB:Chkpt:Bounds:ResetPoint", Name = "Checkpoint B", Color = Color3.fromRGB(255, 255, 0) },
+                ["CheckptA"] = { Path = "Light Containment Zone:CheckptA:Chkpt:Bounds:ResetPoint", Name = "Checkpoint A", Color = Color3.fromRGB(255, 255, 0) },
+                ["173"] = { Path = "Light Containment Zone:173:Stairs:Bounds:ResetPoint", Name = "Scp 173", Color = Color3.fromRGB(255, 255, 0) },
+                ["Armory"] = { Path = "Light Containment Zone:Armory:Room:Bounds:ResetPoint", Name = "Armory", Color = Color3.fromRGB(255, 255, 0) },
+                ["330"] = { Path = "Light Containment Zone:330:Room:Bounds:ResetPoint", Name = "Scp 330", Color = Color3.fromRGB(255, 255, 0) },
+                ["Cafe"] = { Path = "Light Containment Zone:Cafe:Room:Bounds:ResetPoint", Name = "Cafe", Color = Color3.fromRGB(255, 255, 0) },
+                ["ClassD"] = { Path = "Light Containment Zone:Class D Spawn:Room:Bounds:ResetPoint", Name = "Class D", Color = Color3.fromRGB(255, 255, 0) },
+                ["049"] = { Path = "Heavy Containment Zone:049:Room:Bounds:ResetPoint", Name = "Scp 049", Color = Color3.fromRGB(0, 0, 255) },
+                ["079"] = { Path = "Heavy Containment Zone:079:Room:Bounds:ResetPoint", Name = "Scp 079", Color = Color3.fromRGB(0, 0, 255) },
+                ["096"] = { Path = "Heavy Containment Zone:096:Room:Bounds:ResetPoint", Name = "Scp 096", Color = Color3.fromRGB(0, 0, 255) },
+                ["106"] = { Path = "Heavy Containment Zone:106:Room:Bounds:ResetPoint", Name = "Scp 106", Color = Color3.fromRGB(0, 0, 255) },
+                ["939"] = { Path = "Heavy Containment Zone:939:Room:Bounds:ResetPoint", Name = "Scp 939", Color = Color3.fromRGB(0, 0, 255) },
+                ["Hid"] = { Path = "Heavy Containment Zone:Hid:Room:Bounds:ResetPoint", Name = "Hid", Color = Color3.fromRGB(0, 0, 255) },
+                ["Servers"] = { Path = "Heavy Containment Zone:Servers:Room:Bounds:ResetPoint", Name = "Servers", Color = Color3.fromRGB(0, 0, 255) },
+                ["Warhead"] = { Path = "Heavy Containment Zone:Warhead:Room:Bounds:ResetPoint", Name = "Warhead", Color = Color3.fromRGB(0, 0, 255) },
+                ["NorthCheckpoint"] = { Path = "Heavy Containment Zone:North HCZ-EZ Checkpoint:HCZ Part:Room:Bounds:ResetPoint", Name = "North HCZ-EZ Checkpoint", Color = Color3.fromRGB(255, 0, 0) },
+                ["SouthCheckpoint"] = { Path = "Heavy Containment Zone:South HCZ-EZ Checkpoint:HCZ Part:Room:Bounds:ResetPoint", Name = "South HCZ-EZ Checkpoint", Color = Color3.fromRGB(255, 0, 0) }
+            }
+        },
+        Colors = {
+            Box = Color3.fromRGB(255, 255, 255),
+            Name = Color3.fromRGB(255, 255, 255),
+            Distance = Color3.fromRGB(255, 255, 255),
+            Health = Color3.fromRGB(255, 255, 255),
+            Weapon = Color3.fromRGB(255, 255, 255),
+            Role = Color3.fromRGB(255, 255, 255)
+        }
+    }
+
     -- Инициализация всех типов ESP
-    initPlayerESP(services)
-    initItemESP(services)
-    initRoomESP(services)
+    initPlayerESP(services, Settings)
+    initItemESP(services, Settings)
+    initRoomESP(services, Settings)
 
     -- UI Elements
     if not VisualContent or not VisualContent.CollapsingHeader then
