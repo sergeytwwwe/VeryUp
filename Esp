@@ -51,31 +51,25 @@ local RoleColors = {
     ["Unknown"] = Color3.fromRGB(128, 128, 128)
 }
 local function getRoleColor(player)
-    if not player then
-        local hue = tick() % 1
-        return Color3.fromHSV(hue, 1, 1)
-    end
     local role = getPlayerRole(player)
-    local character = player.Character
-    local humanoid = character and character:FindFirstChild("Humanoid")
-    return humanoid and humanoid.Health <= 0 and Color3.fromRGB(0, 255, 255) or (RoleColors[role] or Color3.fromRGB(255, 255, 255))
+    return RoleColors[role] or Color3.fromRGB(255, 255, 255)
 end
 
 -- Проверка команды для Team Check
 local function shouldShowESP(player, services, settings)
     if not player then return false end
+    local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then return false end -- Исключение мёртвых
+    if not settings.TeamCheck then return true end -- По умолчанию показывать всех
     local localRole = getPlayerRole(services.LocalPlayer)
     local playerRole = getPlayerRole(player)
-    local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
-    if humanoid and humanoid.Health <= 0 then return false end -- Исключение мёртвых
-    if not settings.TeamCheck then return true end -- По умолчанию показывать всех
     local teamData = TeamRelations[localRole] or { Allies = {}, Enemies = {} }
     return table.find(teamData.Enemies, playerRole) ~= nil
 end
 
 -- Настройки
 local Settings = {
-    Enabled = true, -- По умолчанию включено
+    Enabled = true,
     MaxDistance = 1000,
     Box = true,
     BoxStyle = "Modern",
@@ -84,7 +78,7 @@ local Settings = {
     Health = false,
     Weapon = false,
     Role = false,
-    TeamCheck = false, -- Переименовано с ShowAllies, по умолчанию выключено
+    TeamCheck = false,
     ItemESP = { Enabled = false, Box = false, BoxStyle = "Modern", Name = false, MaxDistance = 1000 },
     RoomESP = { 
         Enabled = false, 
@@ -168,15 +162,9 @@ local function MainESP(model, services, settings)
             local humanoid = model:FindFirstChild("Humanoid")
             local rootPart = model:FindFirstChild("HumanoidRootPart")
             local head = model:FindFirstChild("Head")
-            if not humanoid or not rootPart or not head then
-                repeat wait(0.1) until model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") and model:FindFirstChild("Head")
-                humanoid = model:FindFirstChild("Humanoid")
-                rootPart = model:FindFirstChild("HumanoidRootPart")
-                head = model:FindFirstChild("Head")
-                if not humanoid or not rootPart or not head then
-                    Vis(Library, false)
-                    return
-                end
+            if not humanoid or not rootPart or not head or humanoid.Health <= 0 then -- Исключение мёртвых
+                Vis(Library, false)
+                return
             end
 
             if player and not shouldShowESP(player, services, settings) then
@@ -334,7 +322,7 @@ local function MainESP(model, services, settings)
             if settings.Health then
                 local health = humanoid.Health
                 local maxHealth = humanoid.MaxHealth
-                Library.Health.Text = health <= 0 and "Dead" or math.floor(health) .. "/" .. math.floor(maxHealth)
+                Library.Health.Text = math.floor(health) .. "/" .. math.floor(maxHealth)
                 Library.Health.Position = Vector2.new(centerXText, BL.Y + textSpacing + bottomOffset)
                 Library.Health.Color = settings.Colors.Health
                 Library.Health.Visible = true
@@ -695,7 +683,7 @@ end
 return function(VisualContent, services)
     -- Настройки
     local Settings = {
-        Enabled = true, -- По умолчанию включено
+        Enabled = true,
         MaxDistance = 1000,
         Box = true,
         BoxStyle = "Modern",
@@ -704,7 +692,7 @@ return function(VisualContent, services)
         Health = false,
         Weapon = false,
         Role = false,
-        TeamCheck = false, -- Переименовано с ShowAllies, по умолчанию выключено
+        TeamCheck = false,
         ItemESP = { Enabled = false, Box = false, BoxStyle = "Modern", Name = false, MaxDistance = 1000 },
         RoomESP = { 
             Enabled = false, 
@@ -761,7 +749,7 @@ return function(VisualContent, services)
 
     GeneralSettings:Checkbox({ Label = "ESP On", Value = true, Callback = function(_, value) Settings.Enabled = value end })
     GeneralSettings:SliderInt({ Label = "Max Distance", Value = 1000, Minimum = 100, Maximum = 5000, Callback = function(_, value) Settings.MaxDistance = value end })
-    GeneralSettings:Checkbox({ Label = "Team Check", Value = false, Callback = function(_, value) Settings.TeamCheck = value end }) -- Переименовано
+    GeneralSettings:Checkbox({ Label = "Team Check", Value = false, Callback = function(_, value) Settings.TeamCheck = value end })
 
     local VisualElements = VisualContent:CollapsingHeader({ Title = "Visual Elements" })
     VisualElements:Checkbox({ Label = "Box ESP", Value = true, Callback = function(_, value) Settings.Box = value end })
