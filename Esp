@@ -696,14 +696,36 @@ return function(VisualContent, services)
     initRoomESP(services)
 
     -- UI Elements
+    if not VisualContent or not VisualContent.CollapsingHeader then
+        warn("VisualContent is invalid or does not support CollapsingHeader")
+        return
+    end
+
     local GeneralSettings = VisualContent:CollapsingHeader({ Title = "General Settings" })
+    if not GeneralSettings then
+        warn("Failed to create GeneralSettings CollapsingHeader")
+        return
+    end
+
     GeneralSettings:Checkbox({ Label = "ESP On", Value = false, Callback = function(_, value) Settings.Enabled = value end })
     GeneralSettings:SliderInt({ Label = "Max Distance", Value = 1000, Minimum = 100, Maximum = 5000, Callback = function(_, value) Settings.MaxDistance = value end })
-    GeneralSettings:TreeNode({ Title = "Team Check" })
-    :Checkbox({ Label = "Class D", Value = true, Callback = function(_, value) Settings.TeamCheck.ClassD = value end })
-    :Checkbox({ Label = "Chaos Insurgency", Value = true, Callback = function(_, value) Settings.TeamCheck.ChaosInsurgency = value end })
-    :Checkbox({ Label = "Scientist", Value = true, Callback = function(_, value) Settings.TeamCheck.Scientist = value end })
-    :Checkbox({ Label = "Mobile Task Force", Value = true, Callback = function(_, value) Settings.TeamCheck.MobileTaskForce = value end })
+    
+    local teamCheckNode = GeneralSettings:TreeNode({ Title = "Team Check" })
+    if not teamCheckNode then
+        warn("Failed to create Team Check TreeNode")
+        return
+    end
+
+    -- Проверяем, есть ли метод Checkbox
+    if not teamCheckNode.Checkbox then
+        warn("teamCheckNode does not support Checkbox method")
+        return
+    end
+
+    teamCheckNode:Checkbox({ Label = "Class D", Value = true, Callback = function(_, value) Settings.TeamCheck.ClassD = value end })
+    teamCheckNode:Checkbox({ Label = "Chaos Insurgency", Value = true, Callback = function(_, value) Settings.TeamCheck.ChaosInsurgency = value end })
+    teamCheckNode:Checkbox({ Label = "Scientist", Value = true, Callback = function(_, value) Settings.TeamCheck.Scientist = value end })
+    teamCheckNode:Checkbox({ Label = "Mobile Task Force", Value = true, Callback = function(_, value) Settings.TeamCheck.MobileTaskForce = value end })
 
     local VisualElements = VisualContent:CollapsingHeader({ Title = "Visual Elements" })
     VisualElements:Checkbox({ Label = "Box ESP", Value = true, Callback = function(_, value) Settings.Box = value end })
