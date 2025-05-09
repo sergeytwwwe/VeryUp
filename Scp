@@ -6,44 +6,53 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
 -- Инициализация ReGui
-ReGui:Init({
-    Prefabs = InsertService:LoadLocalAsset("rbxassetid://" .. ReGui.PrefabsId)
-})
+local success, errorMsg = pcall(function()
+    ReGui:Init({
+        Prefabs = InsertService:LoadLocalAsset("rbxassetid://" .. ReGui.PrefabsId)
+    })
+end)
 
 -- Отношения команд
 local TeamRelations = {
-    ["D-Class"] = { Allies = {"Chaos"}, Enemies = {"MTF", "Scientist", "SCP"} },
-    ["Chaos"] = { Allies = {"D-Class"}, Enemies = {"MTF", "Scientist", "SCP"} },
-    ["Scientist"] = { Allies = {"MTF"}, Enemies = {"D-Class", "Chaos", "SCP"} },
-    ["MTF"] = { Allies = {"Scientist"}, Enemies = {"D-Class", "Chaos", "SCP"} },
-    ["SCP"] = { Allies = {}, Enemies = {"D-Class", "Chaos", "MTF", "Scientist"} }
+    ["Class D"] = { Allies = {"Chaos Insurgency"}, Enemies = {"Mobile Task Force", "Scientist", "SCP"} },
+    ["Chaos Insurgency"] = { Allies = {"Class D"}, Enemies = {"Mobile Task Force", "Scientist", "SCP"} },
+    ["Scientist"] = { Allies = {"Mobile Task Force"}, Enemies = {"Class D", "Chaos Insurgency", "SCP"} },
+    ["Mobile Task Force"] = { Allies = {"Scientist"}, Enemies = {"Class D", "Chaos Insurgency", "SCP"} },
+    ["SCP"] = { Allies = {}, Enemies = {"Class D", "Chaos Insurgency", "Mobile Task Force", "Scientist"} }
 }
 
 -- Цвета для ролей
 local RoleColors = {
-    ["D-Class"] = Color3.fromRGB(255, 165, 0), -- Оранжевый
-    ["SCP"] = Color3.fromRGB(255, 0, 0),       -- Красный
-    ["Chaos"] = Color3.fromRGB(0, 255, 0),    -- Зелёный
-    ["MTF"] = Color3.fromRGB(0, 0, 255),      -- Синий
-    ["Scientist"] = Color3.fromRGB(255, 255, 255) -- Белый
+    ["Class D"] = Color3.fromRGB(255, 165, 0),       -- Оранжевый
+    ["SCP"] = Color3.fromRGB(255, 0, 0),             -- Красный
+    ["Chaos Insurgency"] = Color3.fromRGB(0, 255, 0), -- Зелёный
+    ["Mobile Task Force"] = Color3.fromRGB(0, 0, 255), -- Синий
+    ["Scientist"] = Color3.fromRGB(255, 255, 255),   -- Белый
+    ["Unknown"] = Color3.fromRGB(128, 128, 128)      -- Серый для неизвестных ролей
 }
 
 -- Функция для получения роли игрока
 local function getPlayerRole(player)
-    return player.Team and player.Team.Name or "Unknown"
+    if not player then return "Unknown" end
+    local team = player.Team
+    return team and team.Name or "Unknown"
 end
 
 -- Функция для получения цвета роли
 local function getRoleColor(player)
+    if not player then return Color3.fromRGB(255, 255, 255) end
     local role = getPlayerRole(player)
-    return RoleColors[role] or Color3.fromRGB(255, 255, 255) -- Белый по умолчанию
+    return RoleColors[role] or Color3.fromRGB(255, 255, 255)
 end
 
 -- Проверка, является ли игрок валидным для ESP
-local function isValidPlayer(player, espMode)
-    if player == LocalPlayer or not player.Character or not player.Character:FindFirstChild("Humanoid") or player.Character.Humanoid.Health <= 0 then
-        return false
-    end
+local function isValidPlayer(player, espMode, validationCache)
+    if not player or player == LocalPlayer then return false end
+
+    local character = player.Character
+    if not character then return false end
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then return false end
 
     local localRole = getPlayerRole(LocalPlayer)
     local playerRole = getPlayerRole(player)
@@ -61,10 +70,10 @@ end
 
 -- Проверка видимости игрока (Raycast)
 local function isPlayerVisible(player)
+    if not player or not player.Character or not LocalPlayer.Character then return false end
+
     local character = player.Character
     local localChar = LocalPlayer.Character
-    if not character or not localChar then return false end
-
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
     local localRootPart = localChar:FindFirstChild("HumanoidRootPart")
     if not humanoidRootPart or not localRootPart then return false end
@@ -94,25 +103,33 @@ local Content = Window:ScrollingCanvas({
 -- Настройки ESP
 local espSettings = {
     Enabled = false,
-    Mode = "None",
+    Mode = "All",
     VisibleCheck = "None",
     MaxDistance = 1000,
-    Box = false,
+    Box = true,
     BoxMode = "2D",
     BoxStyle = "Default",
-    Name = false,
+    Name = true,
     Distance = false,
     Health = false,
     Weapon = false,
     Role = false,
-    Skeleton = false,
-    Chams = false,
     ItemESP = {
         Enabled = false,
         Box = false,
         BoxStyle = "Default",
         Name = false,
         MaxDistance = 1000
+    },
+    PerformanceMode = false,
+    UpdateInterval = 1,
+    Colors = {
+        Box = getRoleColor(LocalPlayer),
+        Name = getRoleColor(LocalPlayer),
+        Distance = getRoleColor(LocalPlayer),
+        Health = getRoleColor(LocalPlayer),
+        Weapon = getRoleColor(LocalPlayer),
+        Role = getRoleColor(LocalPlayer)
     }
 }
 
@@ -122,14 +139,20 @@ local espElements = {}
 -- Таблица элементов ESP для предметов
 local itemEspElements = {}
 
+-- Кэш для проверок
+local validationCache = {}
+
+-- Кэш для отладочных сообщений
+local debugPrintCooldown = {}
+
 -- Создание новой линии
 local function NewLine(color, thickness)
     local line = Drawing.new("Line")
     line.Visible = false
     line.From = Vector2.new(0, 0)
     line.To = Vector2.new(0, 0)
-    line.Color = color
-    line.Thickness = thickness
+    line.Color = color or Color3.fromRGB(255, 255, 255)
+    line.Thickness = thickness or 2
     line.Transparency = 1
     return line
 end
@@ -141,93 +164,537 @@ local function Vis(lib, state)
     end
 end
 
--- Изменить цвет элементов
-local function Colorize(lib, color)
-    for i, v in pairs(lib) do
-        v.Color = color
-    end
-end
-
--- Создание ESP для игрока
+-- Основная функция ESP для игрока
 local function createESP(player)
-    if espElements[player] then return end
+    if not player or espElements[player] then return end
+
+    -- Ожидаем загрузки персонажа
+    repeat wait() until player.Character and player.Character:FindFirstChild("Humanoid") and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Head")
 
     local character = player.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    if not character then return end
 
+    local roleColor = getRoleColor(player)
+
+    -- Создаём элементы ESP
     local elements = {
         BoxLines = {
-            TL1 = NewLine(getRoleColor(player), 2),
-            TL2 = NewLine(getRoleColor(player), 2),
-            TR1 = NewLine(getRoleColor(player), 2),
-            TR2 = NewLine(getRoleColor(player), 2),
-            BL1 = NewLine(getRoleColor(player), 2),
-            BL2 = NewLine(getRoleColor(player), 2),
-            BR1 = NewLine(getRoleColor(player), 2),
-            BR2 = NewLine(getRoleColor(player), 2)
+            Top = NewLine(roleColor, 2),
+            Bottom = NewLine(roleColor, 2),
+            Left = NewLine(roleColor, 2),
+            Right = NewLine(roleColor, 2),
+            TL1 = NewLine(roleColor, 2),
+            TL2 = NewLine(roleColor, 2),
+            TR1 = NewLine(roleColor, 2),
+            TR2 = NewLine(roleColor, 2),
+            BL1 = NewLine(roleColor, 2),
+            BL2 = NewLine(roleColor, 2),
+            BR1 = NewLine(roleColor, 2),
+            BR2 = NewLine(roleColor, 2)
         },
         Name = Drawing.new("Text"),
         Distance = Drawing.new("Text"),
         Health = Drawing.new("Text"),
-        HealthBar = Drawing.new("Line"),
-        HealthBarFrame = Drawing.new("Line"),
+        HealthBar = NewLine(Color3.fromRGB(0, 255, 0), 4),
+        HealthBorderLeft = NewLine(Color3.fromRGB(0, 0, 0), 1),
+        HealthBorderRight = NewLine(Color3.fromRGB(0, 0, 0), 1),
         Weapon = Drawing.new("Text"),
         Role = Drawing.new("Text"),
-        Skeleton = {},
-        Highlight = Instance.new("Highlight")
+        DownLabel = Drawing.new("Text") -- Надпись "Down"
     }
 
     -- Настройка текста
-    for _, text in pairs({elements.Name, elements.Distance, elements.Health, elements.Weapon, elements.Role}) do
-        text.Size = 16
+    for _, text in pairs({elements.Name, elements.Distance, elements.Health, elements.Weapon, elements.Role, elements.DownLabel}) do
+        text.Size = 12
         text.Center = true
         text.Outline = true
         text.Visible = false
     end
 
     -- Настройка Health Bar
-    elements.HealthBar.Thickness = 4
     elements.HealthBar.Visible = false
+    elements.HealthBorderLeft.Visible = false
+    elements.HealthBorderRight.Visible = false
 
-    -- Настройка рамки Health Bar
-    elements.HealthBarFrame.Thickness = 6
-    elements.HealthBarFrame.Color = Color3.fromRGB(0, 0, 0)
-    elements.HealthBarFrame.Visible = false
+    -- Временная часть для расчёта бокса
+    local oripart = Instance.new("Part")
+    oripart.Parent = Workspace
+    oripart.Transparency = 1
+    oripart.CanCollide = false
+    oripart.Size = Vector3.new(1, 1, 1)
+    oripart.Position = Vector3.new(0, 0, 0)
 
-    -- Настройка Highlight (Chams)
-    elements.Highlight.FillColor = getRoleColor(player)
-    elements.Highlight.OutlineColor = getRoleColor(player)
-    elements.Highlight.FillTransparency = 0.5
-    elements.Highlight.Enabled = false
+    espElements[player] = { Elements = elements, Oripart = oripart, FrameCounter = 0, ValidationCounter = 0 }
 
-    espElements[player] = elements
-end
+    -- Цикл обновления
+    local connection
+    connection = RunService.RenderStepped:Connect(function()
+        local espData = espElements[player]
+        if not espData then
+            connection:Disconnect()
+            return
+        end
 
--- Удаление ESP для игрока
-local function removeESP(player)
-    if not espElements[player] then return end
+        espData.FrameCounter = espData.FrameCounter + 1
+        espData.ValidationCounter = espData.ValidationCounter + 1
 
-    local elements = espElements[player]
-    for _, line in pairs(elements.BoxLines) do
-        line:Remove()
-    end
-    elements.Name:Remove()
-    elements.Distance:Remove()
-    elements.Health:Remove()
-    elements.HealthBar:Remove()
-    elements.HealthBarFrame:Remove()
-    elements.Weapon:Remove()
-    elements.Role:Remove()
-    for _, line in pairs(elements.Skeleton) do
-        line:Remove()
-    end
-    elements.Highlight:Destroy()
-    espElements[player] = nil
+        -- Проверка, включён ли ESP
+        if not espSettings.Enabled then
+            Vis(elements.BoxLines, false)
+            elements.Name.Visible = false
+            elements.Distance.Visible = false
+            elements.Health.Visible = false
+            elements.HealthBar.Visible = false
+            elements.HealthBorderLeft.Visible = false
+            elements.HealthBorderRight.Visible = false
+            elements.Weapon.Visible = false
+            elements.Role.Visible = false
+            elements.DownLabel.Visible = false
+            return
+        end
+
+        -- Проверка, существует ли игрок
+        if not Players:FindFirstChild(player.Name) then
+            for _, line in pairs(elements.BoxLines) do
+                line:Remove()
+            end
+            elements.Name:Remove()
+            elements.Distance:Remove()
+            elements.Health:Remove()
+            elements.HealthBar:Remove()
+            elements.HealthBorderLeft:Remove()
+            elements.HealthBorderRight:Remove()
+            elements.Weapon:Remove()
+            elements.Role:Remove()
+            elements.DownLabel:Remove()
+            oripart:Destroy()
+            espElements[player] = nil
+            connection:Disconnect()
+            return
+        end
+
+        -- Проверка персонажа
+        local character = player.Character
+        local localChar = LocalPlayer.Character
+        if not character or not localChar then
+            Vis(elements.BoxLines, false)
+            elements.Name.Visible = false
+            elements.Distance.Visible = false
+            elements.Health.Visible = false
+            elements.HealthBar.Visible = false
+            elements.HealthBorderLeft.Visible = false
+            elements.HealthBorderRight.Visible = false
+            elements.Weapon.Visible = false
+            elements.Role.Visible = false
+            elements.DownLabel.Visible = false
+            return
+        end
+
+        local humanoid = character:FindFirstChild("Humanoid")
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        local head = character:FindFirstChild("Head")
+        local leftFoot = character:FindFirstChild("LeftFoot") or character:FindFirstChild("LeftLeg")
+        local rightFoot = character:FindFirstChild("RightFoot") or character:FindFirstChild("RightLeg")
+        local localRoot = localChar:FindFirstChild("HumanoidRootPart")
+
+        if not humanoid or not rootPart or not head or not localRoot then
+            Vis(elements.BoxLines, false)
+            elements.Name.Visible = false
+            elements.Distance.Visible = false
+            elements.Health.Visible = false
+            elements.HealthBar.Visible = false
+            elements.HealthBorderLeft.Visible = false
+            elements.HealthBorderRight.Visible = false
+            elements.Weapon.Visible = false
+            elements.Role.Visible = false
+            elements.DownLabel.Visible = false
+            return
+        end
+
+        -- Проверка валидности игрока (кэшируем результат)
+        if espData.ValidationCounter % 2 == 0 then
+            local isValid = isValidPlayer(player, espSettings.Mode, validationCache)
+            validationCache[player] = isValid
+            if not isValid then
+                local currentTime = tick()
+                if not debugPrintCooldown[player] or (currentTime - debugPrintCooldown[player] >= 5) then
+                    print("ESP skipped player: " .. player.Name .. " | Mode: " .. espSettings.Mode)
+                    debugPrintCooldown[player] = currentTime
+                end
+            end
+        end
+        if not espSettings.PerformanceMode and not validationCache[player] then
+            Vis(elements.BoxLines, false)
+            elements.Name.Visible = false
+            elements.Distance.Visible = false
+            elements.Health.Visible = false
+            elements.HealthBar.Visible = false
+            elements.HealthBorderLeft.Visible = false
+            elements.HealthBorderRight.Visible = false
+            elements.Weapon.Visible = false
+            elements.Role.Visible = false
+            elements.DownLabel.Visible = false
+            return
+        end
+
+        -- Проверка расстояния
+        local distance = (localRoot and rootPart and (rootPart.Position - localRoot.Position).Magnitude) or math.huge
+        if distance > espSettings.MaxDistance then
+            Vis(elements.BoxLines, false)
+            elements.Name.Visible = false
+            elements.Distance.Visible = false
+            elements.Health.Visible = false
+            elements.HealthBar.Visible = false
+            elements.HealthBorderLeft.Visible = false
+            elements.HealthBorderRight.Visible = false
+            elements.Weapon.Visible = false
+            elements.Role.Visible = false
+            elements.DownLabel.Visible = false
+            return
+        end
+
+        -- Проверка видимости
+        if not espSettings.PerformanceMode and espSettings.VisibleCheck == "Visible Only" and not isPlayerVisible(player) then
+            Vis(elements.BoxLines, false)
+            elements.Name.Visible = false
+            elements.Distance.Visible = false
+            elements.Health.Visible = false
+            elements.HealthBar.Visible = false
+            elements.HealthBorderLeft.Visible = false
+            elements.HealthBorderRight.Visible = false
+            elements.Weapon.Visible = false
+            elements.Role.Visible = false
+            elements.DownLabel.Visible = false
+            return
+        end
+
+        -- Проверка камеры
+        local camera = Workspace.CurrentCamera
+        if not camera then
+            Vis(elements.BoxLines, false)
+            elements.Name.Visible = false
+            elements.Distance.Visible = false
+            elements.Health.Visible = false
+            elements.HealthBar.Visible = false
+            elements.HealthBorderLeft.Visible = false
+            elements.HealthBorderRight.Visible = false
+            elements.Weapon.Visible = false
+            elements.Role.Visible = false
+            elements.DownLabel.Visible = false
+            return
+        end
+
+        -- Расчёт позиций
+        local headPos, headOnScreen = camera:WorldToViewportPoint(head.Position + Vector3.new(0, head.Size.Y / 2, 0))
+        local leftFootPos, leftFootOnScreen = camera:WorldToViewportPoint(leftFoot and (leftFoot.Position - Vector3.new(0, leftFoot.Size.Y / 2, 0)) or (rootPart.Position - Vector3.new(1, 3, 0)))
+        local rightFootPos, rightFootOnScreen = camera:WorldToViewportPoint(rightFoot and (rightFoot.Position - Vector3.new(0, rightFoot.Size.Y / 2, 0)) or (rootPart.Position - Vector3.new(-1, 3, 0)))
+        local rootPos, rootOnScreen = camera:WorldToViewportPoint(rootPart.Position)
+
+        -- Используем oripart для расчёта бокса
+        oripart.Size = Vector3.new(rootPart.Size.X, rootPart.Size.Y * 1.5, rootPart.Size.Z)
+        if camera.CFrame and rootPart.CFrame then
+            oripart.CFrame = CFrame.new(rootPart.CFrame.Position, camera.CFrame.Position)
+        else
+            Vis(elements.BoxLines, false)
+            elements.Name.Visible = false
+            elements.Distance.Visible = false
+            elements.Health.Visible = false
+            elements.HealthBar.Visible = false
+            elements.HealthBorderLeft.Visible = false
+            elements.HealthBorderRight.Visible = false
+            elements.Weapon.Visible = false
+            elements.Role.Visible = false
+            elements.DownLabel.Visible = false
+            return
+        end
+
+        local sizeX = oripart.Size.X
+        local sizeY = oripart.Size.Y
+        local tl = camera:WorldToViewportPoint((oripart.CFrame * CFrame.new(sizeX, sizeY, 0)).Position)
+        local tr = camera:WorldToViewportPoint((oripart.CFrame * CFrame.new(-sizeX, sizeY, 0)).Position)
+        local bl = camera:WorldToViewportPoint((oripart.CFrame * CFrame.new(sizeX, -sizeY, 0)).Position)
+        local br = camera:WorldToViewportPoint((oripart.CFrame * CFrame.new(-sizeX, -sizeY, 0)).Position)
+
+        -- Проверка видимости на экране
+        if not headOnScreen or not leftFootOnScreen or not rightFootOnScreen or not rootOnScreen or not (tl.Z > 0) or not (tr.Z > 0) or not (bl.Z > 0) or not (br.Z > 0) then
+            Vis(elements.BoxLines, false)
+            elements.Name.Visible = false
+            elements.Distance.Visible = false
+            elements.Health.Visible = false
+            elements.HealthBar.Visible = false
+            elements.HealthBorderLeft.Visible = false
+            elements.HealthBorderRight.Visible = false
+            elements.Weapon.Visible = false
+            elements.Role.Visible = false
+            elements.DownLabel.Visible = false
+            return
+        end
+
+        -- Проверка состояния здоровья
+        local isDown = humanoid.Health <= 0
+        local boxColor = isDown and Color3.fromRGB(0, 255, 255) or getRoleColor(player)
+        local offset = math.clamp(1 / distance * 750, 2, 300)
+
+        -- Бокс
+        if espSettings.Box and espSettings.BoxMode == "2D" then
+            if espSettings.BoxStyle == "Default" then
+                -- Полный прямоугольник
+                elements.BoxLines.Top.From = Vector2.new(tl.X, tl.Y)
+                elements.BoxLines.Top.To = Vector2.new(tr.X, tr.Y)
+                elements.BoxLines.Top.Color = boxColor
+                elements.BoxLines.Top.Visible = true
+
+                elements.BoxLines.Bottom.From = Vector2.new(bl.X, bl.Y)
+                elements.BoxLines.Bottom.To = Vector2.new(br.X, br.Y)
+                elements.BoxLines.Bottom.Color = boxColor
+                elements.BoxLines.Bottom.Visible = true
+
+                elements.BoxLines.Left.From = Vector2.new(tl.X, tl.Y)
+                elements.BoxLines.Left.To = Vector2.new(bl.X, bl.Y)
+                elements.BoxLines.Left.Color = boxColor
+                elements.BoxLines.Left.Visible = true
+
+                elements.BoxLines.Right.From = Vector2.new(tr.X, tr.Y)
+                elements.BoxLines.Right.To = Vector2.new(br.X, br.Y)
+                elements.BoxLines.Right.Color = boxColor
+                elements.BoxLines.Right.Visible = true
+
+                -- Скрываем линии для стиля Modern
+                elements.BoxLines.TL1.Visible = false
+                elements.BoxLines.TL2.Visible = false
+                elements.BoxLines.TR1.Visible = false
+                elements.BoxLines.TR2.Visible = false
+                elements.BoxLines.BL1.Visible = false
+                elements.BoxLines.BL2.Visible = false
+                elements.BoxLines.BR1.Visible = false
+                elements.BoxLines.BR2.Visible = false
+            else
+                -- Modern стиль (все 8 линий)
+                local topY = headPos.Y
+                local bottomY = math.max(leftFootPos.Y, rightFootPos.Y)
+                local height = bottomY - topY
+                local width = height * 0.5
+                local centerX = rootPos.X
+                local topLeft = Vector2.new(centerX - width / 2, topY)
+                local topRight = Vector2.new(centerX + width / 2, topY)
+                local bottomLeft = Vector2.new(centerX - width / 2, bottomY)
+                local bottomRight = Vector2.new(centerX + width / 2, bottomY)
+
+                local cornerLength = width * 0.3
+
+                elements.BoxLines.TL1.From = topLeft
+                elements.BoxLines.TL1.To = Vector2.new(topLeft.X + cornerLength, topLeft.Y)
+                elements.BoxLines.TL1.Color = boxColor
+                elements.BoxLines.TL1.Visible = true
+
+                elements.BoxLines.TL2.From = topLeft
+                elements.BoxLines.TL2.To = Vector2.new(topLeft.X, topLeft.Y + cornerLength)
+                elements.BoxLines.TL2.Color = boxColor
+                elements.BoxLines.TL2.Visible = true
+
+                elements.BoxLines.TR1.From = topRight
+                elements.BoxLines.TR1.To = Vector2.new(topRight.X - cornerLength, topRight.Y)
+                elements.BoxLines.TR1.Color = boxColor
+                elements.BoxLines.TR1.Visible = true
+
+                elements.BoxLines.TR2.From = topRight
+                elements.BoxLines.TR2.To = Vector2.new(topRight.X, topRight.Y + cornerLength)
+                elements.BoxLines.TR2.Color = boxColor
+                elements.BoxLines.TR2.Visible = true
+
+                elements.BoxLines.BL1.From = bottomLeft
+                elements.BoxLines.BL1.To = Vector2.new(bottomLeft.X + cornerLength, bottomLeft.Y)
+                elements.BoxLines.BL1.Color = boxColor
+                elements.BoxLines.BL1.Visible = true
+
+                elements.BoxLines.BL2.From = bottomLeft
+                elements.BoxLines.BL2.To = Vector2.new(bottomLeft.X, bottomLeft.Y - cornerLength)
+                elements.BoxLines.BL2.Color = boxColor
+                elements.BoxLines.BL2.Visible = true
+
+                elements.BoxLines.BR1.From = bottomRight
+                elements.BoxLines.BR1.To = Vector2.new(bottomRight.X - cornerLength, bottomRight.Y)
+                elements.BoxLines.BR1.Color = boxColor
+                elements.BoxLines.BR1.Visible = true
+
+                elements.BoxLines.BR2.From = bottomRight
+                elements.BoxLines.BR2.To = Vector2.new(bottomRight.X, bottomRight.Y - cornerLength)
+                elements.BoxLines.BR2.Color = boxColor
+                elements.BoxLines.BR2.Visible = true
+
+                -- Скрываем линии для стиля Default
+                elements.BoxLines.Top.Visible = false
+                elements.BoxLines.Bottom.Visible = false
+                elements.BoxLines.Left.Visible = false
+                elements.BoxLines.Right.Visible = false
+            end
+
+            -- Автоматическая толщина линий
+            local thickness = math.clamp(1 / distance * 100, 1, 4)
+            for _, line in pairs(elements.BoxLines) do
+                line.Thickness = thickness
+            end
+        else
+            Vis(elements.BoxLines, false)
+        end
+
+        -- Текст (с масштабированием)
+        local topY = tl.Y
+        local bottomY = bl.Y
+        local height = bottomY - topY
+        local width = (tr.X - tl.X)
+        local centerX = (tl.X + tr.X) / 2
+        local textSpacing = 6
+        local distanceRatio = math.clamp(1 / distance * 800, 0.7, 1.5)
+
+        local currentTopOffset = 0
+        local currentBottomOffset = 0
+
+        if isDown then
+            -- Логика для состояния "Down"
+            elements.DownLabel.Text = "Down"
+            elements.DownLabel.Position = Vector2.new(centerX, topY - textSpacing - currentTopOffset)
+            elements.DownLabel.Size = math.clamp(12 * distanceRatio, 10, 16)
+            elements.DownLabel.Color = Color3.fromRGB(0, 255, 255)
+            elements.DownLabel.Visible = true
+            currentTopOffset = currentTopOffset + (textSpacing * distanceRatio)
+
+            if espSettings.Role then
+                elements.Role.Text = getPlayerRole(player)
+                elements.Role.Position = Vector2.new(centerX, topY - textSpacing - currentTopOffset)
+                elements.Role.Size = math.clamp(12 * distanceRatio, 10, 16)
+                elements.Role.Color = getRoleColor(player)
+                elements.Role.Visible = true
+                currentTopOffset = currentTopOffset + (textSpacing * distanceRatio)
+            else
+                elements.Role.Visible = false
+            end
+
+            -- Скрываем остальные надписи
+            elements.Name.Visible = false
+            elements.Distance.Visible = false
+            elements.Health.Visible = false
+            elements.HealthBar.Visible = false
+            elements.HealthBorderLeft.Visible = false
+            elements.HealthBorderRight.Visible = false
+            elements.Weapon.Visible = false
+        else
+            -- Обычная логика для живых игроков
+            elements.DownLabel.Visible = false
+
+            if espSettings.Role then
+                elements.Role.Text = getPlayerRole(player)
+                elements.Role.Position = Vector2.new(centerX, topY - textSpacing - currentTopOffset)
+                elements.Role.Size = math.clamp(12 * distanceRatio, 10, 16)
+                elements.Role.Color = getRoleColor(player)
+                elements.Role.Visible = true
+                currentTopOffset = currentTopOffset + (textSpacing * distanceRatio)
+            else
+                elements.Role.Visible = false
+            end
+
+            if espSettings.Name then
+                elements.Name.Text = player.Name
+                elements.Name.Position = Vector2.new(centerX, topY - textSpacing - currentTopOffset)
+                elements.Name.Size = math.clamp(12 * distanceRatio, 10, 16)
+                elements.Name.Color = getRoleColor(player)
+                elements.Name.Visible = true
+                currentTopOffset = currentTopOffset + (textSpacing * distanceRatio)
+            else
+                elements.Name.Visible = false
+            end
+
+            if espSettings.Distance then
+                elements.Distance.Text = math.floor(distance) .. " studs"
+                elements.Distance.Position = Vector2.new(centerX, bottomY + textSpacing + currentBottomOffset)
+                elements.Distance.Size = math.clamp(12 * distanceRatio, 10, 16)
+                elements.Distance.Color = getRoleColor(player)
+                elements.Distance.Visible = true
+                currentBottomOffset = currentBottomOffset + (textSpacing * distanceRatio)
+            else
+                elements.Distance.Visible = false
+            end
+
+            if espSettings.Health then
+                local health = humanoid.Health
+                local maxHealth = humanoid.MaxHealth
+                elements.Health.Text = health <= 0 and "Down" or math.floor(health) .. "/" .. math.floor(maxHealth)
+                elements.Health.Position = Vector2.new(centerX, bottomY + textSpacing + currentBottomOffset)
+                elements.Health.Size = math.clamp(12 * distanceRatio, 10, 16)
+                elements.Health.Color = getRoleColor(player)
+                elements.Health.Visible = true
+                currentBottomOffset = currentBottomOffset + (textSpacing * distanceRatio)
+
+                local barWidth = 4
+                local barHeight = height
+                local healthRatio = math.max(0, math.min(1, health / maxHealth))
+                local healthColor = Color3.fromRGB(255 * (1 - healthRatio), 255 * healthRatio, 0)
+
+                elements.HealthBar:Remove()
+                elements.HealthBorderLeft:Remove()
+                elements.HealthBorderRight:Remove()
+                elements.HealthBar = NewLine(healthColor, barWidth)
+                elements.HealthBorderLeft = NewLine(Color3.fromRGB(0, 0, 0), 1)
+                elements.HealthBorderRight = NewLine(Color3.fromRGB(0, 0, 0), 1)
+
+                local barX = tr.X + 2
+                elements.HealthBar.From = Vector2.new(barX, topY + barHeight - (barHeight * healthRatio))
+                elements.HealthBar.To = Vector2.new(barX, topY + barHeight)
+                elements.HealthBar.Visible = true
+
+                elements.HealthBorderLeft.From = Vector2.new(barX - 2, topY)
+                elements.HealthBorderLeft.To = Vector2.new(barX - 2, topY + barHeight)
+                elements.HealthBorderLeft.Visible = true
+
+                elements.HealthBorderRight.From = Vector2.new(barX + 2, topY)
+                elements.HealthBorderRight.To = Vector2.new(barX + 2, topY + barHeight)
+                elements.HealthBorderRight.Visible = true
+            else
+                elements.Health.Visible = false
+                elements.HealthBar.Visible = false
+                elements.HealthBorderLeft.Visible = false
+                elements.HealthBorderRight.Visible = false
+            end
+
+            if espSettings.Weapon then
+                local tool = character:FindFirstChildOfClass("Tool")
+                elements.Weapon.Text = tool and tool.Name or "No Weapon"
+                elements.Weapon.Position = Vector2.new(centerX, bottomY + textSpacing + currentBottomOffset)
+                elements.Weapon.Size = math.clamp(12 * distanceRatio, 10, 16)
+                elements.Weapon.Color = getRoleColor(player)
+                elements.Weapon.Visible = true
+            else
+                elements.Weapon.Visible = false
+            end
+        end
+    end)
+
+    -- Обработка респавна
+    player.CharacterAdded:Connect(function()
+        if espElements[player] then
+            local oldElements = espElements[player].Elements
+            for _, line in pairs(oldElements.BoxLines) do
+                line:Remove()
+            end
+            oldElements.Name:Remove()
+            oldElements.Distance:Remove()
+            oldElements.Health:Remove()
+            oldElements.HealthBar:Remove()
+            oldElements.HealthBorderLeft:Remove()
+            oldElements.HealthBorderRight:Remove()
+            oldElements.Weapon:Remove()
+            oldElements.Role:Remove()
+            oldElements.DownLabel:Remove()
+            espElements[player].Oripart:Destroy()
+            espElements[player] = nil
+        end
+        createESP(player)
+    end)
 end
 
 -- Создание Item ESP для предмета
 local function createItemESP(item)
-    if itemEspElements[item] then return end
+    if not item or itemEspElements[item] then return end
 
     local elements = {
         BoxLines = {
@@ -243,326 +710,29 @@ local function createItemESP(item)
         Name = Drawing.new("Text")
     }
 
-    elements.Name.Size = 16
+    elements.Name.Size = 12
     elements.Name.Center = true
     elements.Name.Outline = true
     elements.Name.Visible = false
 
     itemEspElements[item] = elements
-end
 
--- Удаление Item ESP
-local function removeItemESP(item)
-    if not itemEspElements[item] then return end
-
-    local elements = itemEspElements[item]
-    for _, line in pairs(elements.BoxLines) do
-        line:Remove()
-    end
-    elements.Name:Remove()
-    itemEspElements[item] = nil
-end
-
--- Логирование предметов
-local function logItems()
-    local tools = Workspace:GetDescendants()
-    local found = false
-    for _, item in pairs(tools) do
-        if item:IsA("Tool") then
-            local isHeldByPlayer = false
-            for _, player in pairs(Players:GetPlayers()) do
-                if player.Character and player.Character:FindFirstChild(item.Name) then
-                    isHeldByPlayer = true
-                    break
-                end
-            end
-            if not isHeldByPlayer then
-                print("[Item ESP] Found item: " .. item.Name)
-                found = true
-            end
-        end
-    end
-    if not found then
-        print("[Item ESP] No items found in Workspace")
-    end
-end
-
--- Инициализация Item ESP для существующих предметов
-local function initializeItemESP()
-    local tools = Workspace:GetDescendants()
-    for _, item in pairs(tools) do
-        if item:IsA("Tool") then
-            local isHeldByPlayer = false
-            for _, player in pairs(Players:GetPlayers()) do
-                if player.Character and player.Character:FindFirstChild(item.Name) then
-                    isHeldByPlayer = true
-                    break
-                end
-            end
-            if not isHeldByPlayer then
-                createItemESP(item)
-            end
-        end
-    end
-    logItems()
-end
-
--- Обновление ESP для игроков
-local function updateESP()
-    if not espSettings.Enabled then
-        for player, _ in pairs(espElements) do
-            removeESP(player)
-        end
-        return
-    end
-
-    for player, elements in pairs(espElements) do
-        local character = player.Character
-        local humanoid = character and character:FindFirstChild("Humanoid")
-        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-        
-        if not character or not humanoid or not rootPart or humanoid.Health <= 0 or not isValidPlayer(player, espSettings.Mode) then
-            removeESP(player)
-            continue
-        end
-
-        local distance = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and (rootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude) or 0
-        if distance > espSettings.MaxDistance then
-            removeESP(player)
-            continue
-        end
-
-        local isVisible = isPlayerVisible(player)
-        if espSettings.VisibleCheck == "Visible Only" and not isVisible then
-            removeESP(player)
-            continue
-        end
-
-        local camera = Workspace.CurrentCamera
-        local rootPos, onScreen = camera:WorldToViewportPoint(rootPart.Position)
-        local headPos = character:FindFirstChild("Head") and camera:WorldToViewportPoint(character.Head.Position) or rootPos
-
-        -- Цвет в зависимости от роли
-        local roleColor = getRoleColor(player)
-
-        -- Фиксированный размер бокса (в пикселях)
-        local boxHeight = 100
-        local boxWidth = 60
-        local boxOffsetY = boxHeight / 2
-        local cornerLength = 15
-
-        -- Очистка предыдущих линий бокса
-        for _, line in pairs(elements.BoxLines) do
-            line:Remove()
-        end
-
-        -- Box (2D только)
-        if espSettings.Box and espSettings.BoxMode == "2D" and onScreen then
-            local topLeft = Vector2.new(rootPos.X - boxWidth / 2, rootPos.Y - boxOffsetY)
-            local topRight = Vector2.new(rootPos.X + boxWidth / 2, rootPos.Y - boxOffsetY)
-            local bottomLeft = Vector2.new(rootPos.X - boxWidth / 2, rootPos.Y + boxOffsetY)
-            local bottomRight = Vector2.new(rootPos.X + boxWidth / 2, rootPos.Y + boxOffsetY)
-
-            -- Верхний левый угол
-            elements.BoxLines.TL1.From = topLeft
-            elements.BoxLines.TL1.To = Vector2.new(topLeft.X + cornerLength, topLeft.Y)
-            elements.BoxLines.TL1.Color = roleColor
-            elements.BoxLines.TL1.Visible = true
-
-            elements.BoxLines.TL2.From = topLeft
-            elements.BoxLines.TL2.To = Vector2.new(topLeft.X, topLeft.Y + cornerLength)
-            elements.BoxLines.TL2.Color = roleColor
-            elements.BoxLines.TL2.Visible = true
-
-            -- Верхний правый угол
-            elements.BoxLines.TR1.From = topRight
-            elements.BoxLines.TR1.To = Vector2.new(topRight.X - cornerLength, topRight.Y)
-            elements.BoxLines.TR1.Color = roleColor
-            elements.BoxLines.TR1.Visible = true
-
-            elements.BoxLines.TR2.From = topRight
-            elements.BoxLines.TR2.To = Vector2.new(topRight.X, topRight.Y + cornerLength)
-            elements.BoxLines.TR2.Color = roleColor
-            elements.BoxLines.TR2.Visible = true
-
-            -- Нижний левый угол
-            elements.BoxLines.BL1.From = bottomLeft
-            elements.BoxLines.BL1.To = Vector2.new(bottomLeft.X + cornerLength, bottomLeft.Y)
-            elements.BoxLines.BL1.Color = roleColor
-            elements.BoxLines.BL1.Visible = true
-
-            elements.BoxLines.BL2.From = bottomLeft
-            elements.BoxLines.BL2.To = Vector2.new(bottomLeft.X, bottomLeft.Y - cornerLength)
-            elements.BoxLines.BL2.Color = roleColor
-            elements.BoxLines.BL2.Visible = true
-
-            -- Нижний правый угол
-            elements.BoxLines.BR1.From = bottomRight
-            elements.BoxLines.BR1.To = Vector2.new(bottomRight.X - cornerLength, bottomRight.Y)
-            elements.BoxLines.BR1.Color = roleColor
-            elements.BoxLines.BR1.Visible = true
-
-            elements.BoxLines.BR2.From = bottomRight
-            elements.BoxLines.BR2.To = Vector2.new(bottomRight.X, bottomRight.Y - cornerLength)
-            elements.BoxLines.BR2.Color = roleColor
-            elements.BoxLines.BR2.Visible = true
-        }
-
-        -- Расположение надписей
-        if onScreen then
-            -- Role (над Name)
-            if espSettings.Role then
-                elements.Role.Text = getPlayerRole(player)
-                elements.Role.Position = Vector2.new(rootPos.X, rootPos.Y - boxOffsetY - 50)
-                elements.Role.Color = roleColor
-                elements.Role.Visible = true
-            else
-                elements.Role.Visible = false
-            end
-
-            -- Name (над боксом)
-            if espSettings.Name then
-                elements.Name.Text = player.Name
-                elements.Name.Position = Vector2.new(rootPos.X, rootPos.Y - boxOffsetY - 30)
-                elements.Name.Color = roleColor
-                elements.Name.Visible = true
-            else
-                elements.Name.Visible = false
-            end
-
-            -- Distance (под боксом)
-            if espSettings.Distance then
-                elements.Distance.Text = math.floor(distance) .. " studs"
-                elements.Distance.Position = Vector2.new(rootPos.X, rootPos.Y + boxOffsetY + 20)
-                elements.Distance.Color = roleColor
-                elements.Distance.Visible = true
-            else
-                elements.Distance.Visible = false
-            end
-
-            -- Health (под Distance)
-            if espSettings.Health then
-                local health = humanoid.Health
-                local maxHealth = humanoid.MaxHealth
-                elements.Health.Text = health <= 0 and "Down" or math.floor(health) .. "/" .. math.floor(maxHealth)
-                elements.Health.Position = Vector2.new(rootPos.X, rootPos.Y + boxOffsetY + 40)
-                elements.Health.Color = roleColor
-                elements.Health.Visible = true
-
-                -- Health Bar
-                local barWidth = 6
-                local barHeight = boxHeight
-                local healthRatio = health / maxHealth
-                local healthColor = Color3.fromRGB(255 * (1 - healthRatio), 255 * healthRatio, 0)
-
-                elements.HealthBarFrame.From = Vector2.new(rootPos.X + boxWidth / 2 + 6, rootPos.Y - boxOffsetY)
-                elements.HealthBarFrame.To = Vector2.new(rootPos.X + boxWidth / 2 + 6, rootPos.Y - boxOffsetY + barHeight)
-                elements.HealthBarFrame.Visible = true
-
-                elements.HealthBar.From = Vector2.new(rootPos.X + boxWidth / 2 + 6, rootPos.Y - boxOffsetY + barHeight * (1 - healthRatio))
-                elements.HealthBar.To = Vector2.new(rootPos.X + boxWidth / 2 + 6, rootPos.Y - boxOffsetY)
-                elements.HealthBar.Color = healthColor
-                elements.HealthBar.Visible = true
-            else
-                elements.Health.Visible = false
-                elements.HealthBar.Visible = false
-                elements.HealthBarFrame.Visible = false
-            end
-
-            -- Weapon (под Health)
-            if espSettings.Weapon then
-                local tool = character:FindFirstChildOfClass("Tool")
-                elements.Weapon.Text = tool and tool.Name or "No Weapon"
-                elements.Weapon.Position = Vector2.new(rootPos.X, rootPos.Y + boxOffsetY + 60)
-                elements.Weapon.Color = roleColor
-                elements.Weapon.Visible = true
-            else
-                elements.Weapon.Visible = false
-            end
-        else
-            elements.Role.Visible = false
+    local connection
+    connection = RunService.RenderStepped:Connect(function()
+        if not espSettings.ItemESP.Enabled then
+            Vis(elements.BoxLines, false)
             elements.Name.Visible = false
-            elements.Distance.Visible = false
-            elements.Health.Visible = false
-            elements.HealthBar.Visible = false
-            elements.HealthBarFrame.Visible = false
-            elements.Weapon.Visible = false
+            return
         end
 
-        -- Skeleton
-        if espSettings.Skeleton and onScreen then
-            local bones = {
-                {"Head", "UpperTorso"},
-                {"UpperTorso", "LowerTorso"},
-                {"LowerTorso", "LeftUpperLeg"},
-                {"LowerTorso", "RightUpperLeg"},
-                {"LeftUpperLeg", "LeftLowerLeg"},
-                {"RightUpperLeg", "RightLowerLeg"},
-                {"LeftLowerLeg", "LeftFoot"},
-                {"RightLowerLeg", "RightFoot"},
-                {"UpperTorso", "LeftUpperArm"},
-                {"UpperTorso", "RightUpperArm"},
-                {"LeftUpperArm", "LeftLowerArm"},
-                {"RightUpperArm", "RightLowerArm"},
-                {"LeftLowerArm", "LeftHand"},
-                {"RightLowerArm", "RightHand"}
-            }
-
-            for _, bone in pairs(bones) do
-                local part1 = character:FindFirstChild(bone[1])
-                local part2 = character:FindFirstChild(bone[2])
-                if part1 and part2 then
-                    local pos1, vis1 = camera:WorldToViewportPoint(part1.Position)
-                    local pos2, vis2 = camera:WorldToViewportPoint(part2.Position)
-                    if vis1 and vis2 then
-                        if not elements.Skeleton[bone[1]..bone[2]] then
-                            elements.Skeleton[bone[1]..bone[2]] = Drawing.new("Line")
-                        end
-                        local line = elements.Skeleton[bone[1]..bone[2]]
-                        line.From = Vector2.new(pos1.X, pos1.Y)
-                        line.To = Vector2.new(pos2.X, pos2.Y)
-                        line.Color = roleColor
-                        line.Thickness = 1
-                        line.Visible = true
-                    else
-                        if elements.Skeleton[bone[1]..bone[2]] then
-                            elements.Skeleton[bone[1]..bone[2]].Visible = false
-                        end
-                    end
-                end
+        if not item or not item.Parent then
+            for _, line in pairs(elements.BoxLines) do
+                line:Remove()
             end
-        else
-            for _, line in pairs(elements.Skeleton) do
-                line.Visible = false
-            end
-        end
-
-        -- Chams
-        if espSettings.Chams then
-            elements.Highlight.Adornee = character
-            elements.Highlight.FillColor = roleColor
-            elements.Highlight.OutlineColor = roleColor
-            elements.Highlight.Enabled = true
-        else
-            elements.Highlight.Enabled = false
-        end
-    end
-end
-
--- Обновление Item ESP
-local function updateItemESP()
-    if not espSettings.ItemESP.Enabled then
-        for item, _ in pairs(itemEspElements) do
-            removeItemESP(item)
-        end
-        return
-    end
-
-    for item, elements in pairs(itemEspElements) do
-        local handle = item:FindFirstChild("Handle") or item:FindFirstChildWhichIsA("BasePart")
-        if not handle then
-            removeItemESP(item)
-            continue
+            elements.Name:Remove()
+            itemEspElements[item] = nil
+            connection:Disconnect()
+            return
         end
 
         local isHeldByPlayer = false
@@ -572,84 +742,134 @@ local function updateItemESP()
                 break
             end
         end
+
         if isHeldByPlayer then
-            removeItemESP(item)
-            continue
+            for _, line in pairs(elements.BoxLines) do
+                line:Remove()
+            end
+            elements.Name:Remove()
+            itemEspElements[item] = nil
+            connection:Disconnect()
+            return
+        end
+
+        local handle = item:FindFirstChild("Handle") or item:FindFirstChildWhichIsA("BasePart")
+        if not handle then
+            Vis(elements.BoxLines, false)
+            elements.Name.Visible = false
+            return
         end
 
         local camera = Workspace.CurrentCamera
-        local pos, onScreen = camera:WorldToViewportPoint(handle.Position)
-        local distance = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and (handle.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude) or 0
-        if distance > espSettings.ItemESP.MaxDistance then
-            removeItemESP(item)
-            continue
+        if not camera then
+            Vis(elements.BoxLines, false)
+            elements.Name.Visible = false
+            return
         end
 
-        -- Фиксированный маленький размер бокса для предметов
+        local pos, onScreen = camera:WorldToViewportPoint(handle.Position)
+        local localChar = LocalPlayer.Character
+        local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
+        local distance = (localRoot and (handle.Position - localRoot.Position).Magnitude) or math.huge
+
+        if distance > espSettings.ItemESP.MaxDistance or not onScreen then
+            Vis(elements.BoxLines, false)
+            elements.Name.Visible = false
+            return
+        end
+
         local boxHeight = 20
         local boxWidth = 30
         local boxOffsetY = boxHeight / 2
         local cornerLength = 6
 
-        -- Очистка предыдущих линий бокса
-        for _, line in pairs(elements.BoxLines) do
-            line:Remove()
+        local topLeft = Vector2.new(pos.X - boxWidth / 2, pos.Y - boxOffsetY)
+        local topRight = Vector2.new(pos.X + boxWidth / 2, pos.Y - boxOffsetY)
+        local bottomLeft = Vector2.new(pos.X - boxWidth / 2, pos.Y + boxOffsetY)
+        local bottomRight = Vector2.new(pos.X + boxWidth / 2, pos.Y + boxOffsetY)
+
+        if espSettings.ItemESP.Box then
+            if espSettings.ItemESP.BoxStyle == "Default" then
+                elements.BoxLines.TL1.From = topLeft
+                elements.BoxLines.TL1.To = Vector2.new(topLeft.X + cornerLength, topLeft.Y)
+                elements.BoxLines.TL1.Visible = true
+
+                elements.BoxLines.TL2.From = topLeft
+                elements.BoxLines.TL2.To = Vector2.new(topLeft.X, topLeft.Y + cornerLength)
+                elements.BoxLines.TL2.Visible = true
+
+                elements.BoxLines.TR1.From = topRight
+                elements.BoxLines.TR1.To = Vector2.new(topRight.X - cornerLength, topRight.Y)
+                elements.BoxLines.TR1.Visible = true
+
+                elements.BoxLines.TR2.From = topRight
+                elements.BoxLines.TR2.To = Vector2.new(topRight.X, topRight.Y + cornerLength)
+                elements.BoxLines.TR2.Visible = true
+
+                elements.BoxLines.BL1.From = bottomLeft
+                elements.BoxLines.BL1.To = Vector2.new(bottomLeft.X + cornerLength, bottomLeft.Y)
+                elements.BoxLines.BL1.Visible = true
+
+                elements.BoxLines.BL2.From = bottomLeft
+                elements.BoxLines.BL2.To = Vector2.new(bottomLeft.X, bottomLeft.Y - cornerLength)
+                elements.BoxLines.BL2.Visible = true
+
+                elements.BoxLines.BR1.From = bottomRight
+                elements.BoxLines.BR1.To = Vector2.new(bottomRight.X - cornerLength, bottomRight.Y)
+                elements.BoxLines.BR1.Visible = true
+
+                elements.BoxLines.BR2.From = bottomRight
+                elements.BoxLines.BR2.To = Vector2.new(bottomRight.X, bottomRight.Y - cornerLength)
+                elements.BoxLines.BR2.Visible = true
+
+                local thickness = math.clamp(1 / distance * 100, 1, 4)
+                for _, line in pairs(elements.BoxLines) do
+                    line.Thickness = thickness
+                end
+            else
+                -- Modern стиль
+                elements.BoxLines.TL1.From = topLeft
+                elements.BoxLines.TL1.To = Vector2.new(topLeft.X + cornerLength, topLeft.Y)
+                elements.BoxLines.TL1.Visible = true
+
+                elements.BoxLines.TL2.From = topLeft
+                elements.BoxLines.TL2.To = Vector2.new(topLeft.X, topLeft.Y + cornerLength)
+                elements.BoxLines.TL2.Visible = true
+
+                elements.BoxLines.TR1.From = topRight
+                elements.BoxLines.TR1.To = Vector2.new(topRight.X - cornerLength, topRight.Y)
+                elements.BoxLines.TR1.Visible = true
+
+                elements.BoxLines.TR2.From = topRight
+                elements.BoxLines.TR2.To = Vector2.new(topRight.X, topRight.Y + cornerLength)
+                elements.BoxLines.TR2.Visible = true
+
+                elements.BoxLines.BL1.From = bottomLeft
+                elements.BoxLines.BL1.To = Vector2.new(bottomLeft.X + cornerLength, bottomLeft.Y)
+                elements.BoxLines.BL1.Visible = true
+
+                elements.BoxLines.BL2.From = bottomLeft
+                elements.BoxLines.BL2.To = Vector2.new(bottomLeft.X, bottomLeft.Y - cornerLength)
+                elements.BoxLines.BL2.Visible = true
+
+                elements.BoxLines.BR1.From = bottomRight
+                elements.BoxLines.BR1.To = Vector2.new(bottomRight.X - cornerLength, bottomRight.Y)
+                elements.BoxLines.BR1.Visible = true
+
+                elements.BoxLines.BR2.From = bottomRight
+                elements.BoxLines.BR2.To = Vector2.new(bottomRight.X, bottomRight.Y - cornerLength)
+                elements.BoxLines.BR2.Visible = true
+
+                local thickness = math.clamp(1 / distance * 100, 1, 4)
+                for _, line in pairs(elements.BoxLines) do
+                    line.Thickness = thickness
+                end
+            end
+        else
+            Vis(elements.BoxLines, false)
         end
 
-        -- Box
-        if espSettings.ItemESP.Box and onScreen then
-            local topLeft = Vector2.new(pos.X - boxWidth / 2, pos.Y - boxOffsetY)
-            local topRight = Vector2.new(pos.X + boxWidth / 2, pos.Y - boxOffsetY)
-            local bottomLeft = Vector2.new(pos.X - boxWidth / 2, pos.Y + boxOffsetY)
-            local bottomRight = Vector2.new(pos.X + boxWidth / 2, pos.Y + boxOffsetY)
-
-            -- Верхний левый угол
-            elements.BoxLines.TL1.From = topLeft
-            elements.BoxLines.TL1.To = Vector2.new(topLeft.X + cornerLength, topLeft.Y)
-            elements.BoxLines.TL1.Color = Color3.fromRGB(255, 255, 255)
-            elements.BoxLines.TL1.Visible = true
-
-            elements.BoxLines.TL2.From = topLeft
-            elements.BoxLines.TL2.To = Vector2.new(topLeft.X, topLeft.Y + cornerLength)
-            elements.BoxLines.TL2.Color = Color3.fromRGB(255, 255, 255)
-            elements.BoxLines.TL2.Visible = true
-
-            -- Верхний правый угол
-            elements.BoxLines.TR1.From = topRight
-            elements.BoxLines.TR1.To = Vector2.new(topRight.X - cornerLength, topRight.Y)
-            elements.BoxLines.TR1.Color = Color3.fromRGB(255, 255, 255)
-            elements.BoxLines.TR1.Visible = true
-
-            elements.BoxLines.TR2.From = topRight
-            elements.BoxLines.TR2.To = Vector2.new(topRight.X, topRight.Y + cornerLength)
-            elements.BoxLines.TR2.Color = Color3.fromRGB(255, 255, 255)
-            elements.BoxLines.TR2.Visible = true
-
-            -- Нижний левый угол
-            elements.BoxLines.BL1.From = bottomLeft
-            elements.BoxLines.BL1.To = Vector2.new(bottomLeft.X + cornerLength, bottomLeft.Y)
-            elements.BoxLines.BL1.Color = Color3.fromRGB(255, 255, 255)
-            elements.BoxLines.BL1.Visible = true
-
-            elements.BoxLines.BL2.From = bottomLeft
-            elements.BoxLines.BL2.To = Vector2.new(bottomLeft.X, bottomLeft.Y - cornerLength)
-            elements.BoxLines.BL2.Color = Color3.fromRGB(255, 255, 255)
-            elements.BoxLines.BL2.Visible = true
-
-            -- Нижний правый угол
-            elements.BoxLines.BR1.From = bottomRight
-            elements.BoxLines.BR1.To = Vector2.new(bottomRight.X - cornerLength, bottomRight.Y)
-            elements.BoxLines.BR1.Color = Color3.fromRGB(255, 255, 255)
-            elements.BoxLines.BR1.Visible = true
-
-            elements.BoxLines.BR2.From = bottomRight
-            elements.BoxLines.BR2.To = Vector2.new(bottomRight.X, bottomRight.Y - cornerLength)
-            elements.BoxLines.BR2.Color = Color3.fromRGB(255, 255, 255)
-            elements.BoxLines.BR2.Visible = true
-        }
-
-        -- Name
-        if espSettings.ItemESP.Name and onScreen then
+        if espSettings.ItemESP.Name then
             elements.Name.Text = item.Name
             elements.Name.Position = Vector2.new(pos.X, pos.Y - boxOffsetY - 20)
             elements.Name.Color = Color3.fromRGB(255, 255, 255)
@@ -657,33 +877,36 @@ local function updateItemESP()
         else
             elements.Name.Visible = false
         end
+    end)
+end
+
+-- Инициализация ESP для существующих игроков
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        spawn(function()
+            createESP(player)
+        end)
     end
 end
 
--- Автообновление ESP
-RunService.RenderStepped:Connect(function()
-    updateESP()
-    if espSettings.ItemESP.Enabled then
-        updateItemESP()
-    end
-end)
-
--- Обработка добавления/удаления игроков
 Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        if espSettings.Enabled and isValidPlayer(player, espSettings.Mode) then
-            createESP(player)
-        end
+    if player == LocalPlayer then return end
+    spawn(function()
+        createESP(player)
     end)
 end)
 
-Players.PlayerRemoving:Connect(function(player)
-    removeESP(player)
-end)
+-- Инициализация Item ESP для существующих предметов
+for _, item in pairs(Workspace:GetDescendants()) do
+    if item:IsA("Tool") then
+        spawn(function()
+            createItemESP(item)
+        end)
+    end
+end
 
--- Обработка добавления/удаления предметов
 Workspace.DescendantAdded:Connect(function(descendant)
-    if descendant:IsA("Tool") then
+    if espSettings.ItemESP.Enabled and descendant:IsA("Tool") then
         local isHeldByPlayer = false
         for _, player in pairs(Players:GetPlayers()) do
             if player.Character and player.Character:FindFirstChild(descendant.Name) then
@@ -694,61 +917,47 @@ Workspace.DescendantAdded:Connect(function(descendant)
         if not isHeldByPlayer then
             createItemESP(descendant)
         end
-        logItems()
-    end
-end)
-
-Workspace.DescendantRemoving:Connect(function(descendant)
-    if descendant:IsA("Tool") then
-        removeItemESP(descendant)
-        logItems()
     end
 end)
 
 -- UI Elements
 local GeneralSettings = Content:CollapsingHeader({ Title = "General Settings" })
 
--- ESP On
 GeneralSettings:Checkbox({
     Label = "ESP On",
     Value = false,
     Callback = function(self, value)
         espSettings.Enabled = value
         if not value then
-            for player, _ in pairs(espElements) do
-                removeESP(player)
+            for player, data in pairs(espElements) do
+                Vis(data.Elements.BoxLines, false)
+                data.Elements.Name.Visible = false
+                data.Elements.Distance.Visible = false
+                data.Elements.Health.Visible = false
+                data.Elements.HealthBar.Visible = false
+                data.Elements.HealthBorderLeft.Visible = false
+                data.Elements.HealthBorderRight.Visible = false
+                data.Elements.Weapon.Visible = false
+                data.Elements.Role.Visible = false
+                data.Elements.DownLabel.Visible = false
             end
-        else
-            for _, player in pairs(Players:GetPlayers()) do
-                if isValidPlayer(player, espSettings.Mode) then
-                    createESP(player)
-                end
+            for item, elements in pairs(itemEspElements) do
+                Vis(elements.BoxLines, false)
+                elements.Name.Visible = false
             end
         end
     end
 })
 
--- ESP Mode
 GeneralSettings:Combo({
     Label = "ESP Mode",
-    Selected = "None",
+    Selected = "All",
     Items = {"None", "All", "Team", "Enemy"},
     Callback = function(self, value)
         espSettings.Mode = value
-        for player, _ in pairs(espElements) do
-            removeESP(player)
-        end
-        if espSettings.Enabled then
-            for _, player in pairs(Players:GetPlayers()) do
-                if isValidPlayer(player, espSettings.Mode) then
-                    createESP(player)
-                end
-            end
-        end
     end
 })
 
--- Visible Check
 GeneralSettings:Combo({
     Label = "Visible Check",
     Selected = "None",
@@ -758,7 +967,6 @@ GeneralSettings:Combo({
     end
 })
 
--- Max Distance
 GeneralSettings:SliderInt({
     Label = "Max Distance",
     Value = 1000,
@@ -769,19 +977,29 @@ GeneralSettings:SliderInt({
     end
 })
 
--- Visual Elements
+GeneralSettings:Checkbox({
+    Label = "Performance Mode",
+    Value = false,
+    Callback = function(self, value)
+        espSettings.PerformanceMode = value
+        if value then
+            espSettings.UpdateInterval = 5
+        else
+            espSettings.UpdateInterval = 1
+        end
+    end
+})
+
 local VisualElements = Content:CollapsingHeader({ Title = "Visual Elements" })
 
--- Box
 VisualElements:Checkbox({
     Label = "Box ESP",
-    Value = false,
+    Value = true,
     Callback = function(self, value)
         espSettings.Box = value
     end
 })
 
--- Box Mode
 VisualElements:Combo({
     Label = "Box Mode",
     Selected = "2D",
@@ -791,7 +1009,6 @@ VisualElements:Combo({
     end
 })
 
--- Box Style (только для 2D)
 local boxStyleCombo = VisualElements:Combo({
     Label = "Box Style",
     Selected = "Default",
@@ -801,21 +1018,18 @@ local boxStyleCombo = VisualElements:Combo({
     end
 })
 
--- Обновление видимости Box Style
 RunService.RenderStepped:Connect(function()
     boxStyleCombo.Visible = espSettings.BoxMode == "2D"
 end)
 
--- Name
 VisualElements:Checkbox({
     Label = "Name ESP",
-    Value = false,
+    Value = true,
     Callback = function(self, value)
         espSettings.Name = value
     end
 })
 
--- Distance
 VisualElements:Checkbox({
     Label = "Distance ESP",
     Value = false,
@@ -824,7 +1038,6 @@ VisualElements:Checkbox({
     end
 })
 
--- Health
 VisualElements:Checkbox({
     Label = "Health ESP",
     Value = false,
@@ -833,7 +1046,6 @@ VisualElements:Checkbox({
     end
 })
 
--- Weapon
 VisualElements:Checkbox({
     Label = "Weapon ESP",
     Value = false,
@@ -842,7 +1054,6 @@ VisualElements:Checkbox({
     end
 })
 
--- Role
 VisualElements:Checkbox({
     Label = "Role ESP",
     Value = false,
@@ -851,25 +1062,78 @@ VisualElements:Checkbox({
     end
 })
 
--- Skeleton
-VisualElements:Checkbox({
-    Label = "Skeleton ESP",
-    Value = false,
+-- Добавляем вкладку Colors
+local ColorsSettings = VisualElements:CollapsingHeader({ Title = "Colors" })
+
+ColorsSettings:ColorPicker({
+    Label = "Box Color",
+    Value = getRoleColor(LocalPlayer),
     Callback = function(self, value)
-        espSettings.Skeleton = value
+        espSettings.Colors.Box = value
+        for _, espData in pairs(espElements) do
+            for _, line in pairs(espData.Elements.BoxLines) do
+                line.Color = value
+            end
+        end
     end
 })
 
--- Chams
-VisualElements:Checkbox({
-    Label = "Chams ESP",
-    Value = false,
+ColorsSettings:ColorPicker({
+    Label = "Name Color",
+    Value = getRoleColor(LocalPlayer),
     Callback = function(self, value)
-        espSettings.Chams = value
+        espSettings.Colors.Name = value
+        for _, espData in pairs(espElements) do
+            espData.Elements.Name.Color = value
+        end
     end
 })
 
--- Item ESP
+ColorsSettings:ColorPicker({
+    Label = "Distance Color",
+    Value = getRoleColor(LocalPlayer),
+    Callback = function(self, value)
+        espSettings.Colors.Distance = value
+        for _, espData in pairs(espElements) do
+            espData.Elements.Distance.Color = value
+        end
+    end
+})
+
+ColorsSettings:ColorPicker({
+    Label = "Health Color",
+    Value = getRoleColor(LocalPlayer),
+    Callback = function(self, value)
+        espSettings.Colors.Health = value
+        for _, espData in pairs(espElements) do
+            espData.Elements.Health.Color = value
+        end
+    end
+})
+
+ColorsSettings:ColorPicker({
+    Label = "Weapon Color",
+    Value = getRoleColor(LocalPlayer),
+    Callback = function(self, value)
+        espSettings.Colors.Weapon = value
+        for _, espData in pairs(espElements) do
+            espData.Elements.Weapon.Color = value
+        end
+    end
+})
+
+ColorsSettings:ColorPicker({
+    Label = "Role Color",
+    Value = getRoleColor(LocalPlayer),
+    Callback = function(self, value)
+        espSettings.Colors.Role = value
+        for _, espData in pairs(espElements) do
+            espData.Elements.Role.Color = value
+        end
+    end
+})
+
+-- Добавляем секцию Item ESP
 local ItemESP = VisualElements:CollapsingHeader({ Title = "Item ESP" })
 
 ItemESP:Checkbox({
@@ -878,13 +1142,11 @@ ItemESP:Checkbox({
     Callback = function(self, value)
         espSettings.ItemESP.Enabled = value
         if not value then
-            for item, _ in pairs(itemEspElements) do
-                removeItemESP(item)
+            for item, elements in pairs(itemEspElements) do
+                Vis(elements.BoxLines, false)
+                elements.Name.Visible = false
             end
-        else
-            initializeItemESP()
         end
-        logItems()
     end
 })
 
@@ -922,6 +1184,3 @@ ItemESP:SliderInt({
         espSettings.ItemESP.MaxDistance = value
     end
 })
-
--- Инициализация логов при запуске
-logItems()
