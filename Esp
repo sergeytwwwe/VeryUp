@@ -32,6 +32,15 @@ local function getPlayerRole(player)
     return player.Team and player.Team.Name or "Unknown"
 end
 
+-- Отношения команд
+local TeamRelations = {
+    ["Class D"] = { Allies = {"Chaos Insurgency"}, Enemies = {"Mobile Task Force", "Scientist", "SCP"} },
+    ["Chaos Insurgency"] = { Allies = {"Class D"}, Enemies = {"Mobile Task Force", "Scientist", "SCP"} },
+    ["Scientist"] = { Allies = {"Mobile Task Force"}, Enemies = {"Class D", "Chaos Insurgency", "SCP"} },
+    ["Mobile Task Force"] = { Allies = {"Scientist"}, Enemies = {"Class D", "Chaos Insurgency", "SCP"} },
+    ["SCP"] = { Allies = {}, Enemies = {"Class D", "Chaos Insurgency", "Mobile Task Force", "Scientist"} }
+}
+
 -- Получение цвета роли
 local RoleColors = {
     ["Class D"] = Color3.fromRGB(255, 165, 0),
@@ -55,13 +64,12 @@ end
 -- Проверка команды для Team Check
 local function shouldShowESP(player)
     if not player then return false end
-    local role = getPlayerRole(player)
-    if role == "SCP" then return true end
-    if role == "Class D" and not Settings.TeamCheck.ClassD then return false end
-    if role == "Chaos Insurgency" and not Settings.TeamCheck.ChaosInsurgency then return false end
-    if role == "Scientist" and not Settings.TeamCheck.Scientist then return false end
-    if role == "Mobile Task Force" and not Settings.TeamCheck.MobileTaskForce then return false end
-    return true
+    local localRole = getPlayerRole(services.LocalPlayer)
+    local playerRole = getPlayerRole(player)
+    if playerRole == "SCP" then return true end
+    if not Settings.ShowAllies then return false end
+    local teamData = TeamRelations[localRole] or { Allies = {}, Enemies = {} }
+    return table.find(teamData.Allies, playerRole) or playerRole == localRole
 end
 
 -- Настройки
@@ -75,12 +83,7 @@ local Settings = {
     Health = false,
     Weapon = false,
     Role = false,
-    TeamCheck = {
-        ClassD = true,
-        ChaosInsurgency = true,
-        Scientist = true,
-        MobileTaskForce = true
-    },
+    ShowAllies = true,
     ItemESP = { Enabled = false, Box = false, BoxStyle = "Modern", Name = false, MaxDistance = 1000 },
     RoomESP = { 
         Enabled = false, 
@@ -165,7 +168,6 @@ local function MainESP(model, services)
             local rootPart = model:FindFirstChild("HumanoidRootPart")
             local head = model:FindFirstChild("Head")
             if not humanoid or not rootPart or not head then
-                -- Повторная попытка найти компоненты для SCP
                 repeat wait(0.1) until model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") and model:FindFirstChild("Head")
                 humanoid = model:FindFirstChild("Humanoid")
                 rootPart = model:FindFirstChild("HumanoidRootPart")
@@ -382,7 +384,7 @@ local function MainESP(model, services)
     coroutine.wrap(Updater)()
 end
 
--- Основная функция Item ESP (только в Workspace)
+-- Основная функция Item ESP
 local function MainItemESP(item, services)
     if not item then return end
     repeat wait() until item:FindFirstChild("Handle") or item:FindFirstChildWhichIsA("BasePart")
@@ -709,23 +711,7 @@ return function(VisualContent, services)
 
     GeneralSettings:Checkbox({ Label = "ESP On", Value = false, Callback = function(_, value) Settings.Enabled = value end })
     GeneralSettings:SliderInt({ Label = "Max Distance", Value = 1000, Minimum = 100, Maximum = 5000, Callback = function(_, value) Settings.MaxDistance = value end })
-    
-    local teamCheckNode = GeneralSettings:TreeNode({ Title = "Team Check" })
-    if not teamCheckNode then
-        warn("Failed to create Team Check TreeNode")
-        return
-    end
-
-    -- Проверяем, есть ли метод Checkbox
-    if not teamCheckNode.Checkbox then
-        warn("teamCheckNode does not support Checkbox method")
-        return
-    end
-
-    teamCheckNode:Checkbox({ Label = "Class D", Value = true, Callback = function(_, value) Settings.TeamCheck.ClassD = value end })
-    teamCheckNode:Checkbox({ Label = "Chaos Insurgency", Value = true, Callback = function(_, value) Settings.TeamCheck.ChaosInsurgency = value end })
-    teamCheckNode:Checkbox({ Label = "Scientist", Value = true, Callback = function(_, value) Settings.TeamCheck.Scientist = value end })
-    teamCheckNode:Checkbox({ Label = "Mobile Task Force", Value = true, Callback = function(_, value) Settings.TeamCheck.MobileTaskForce = value end })
+    GeneralSettings:Checkbox({ Label = "Show Allies", Value = true, Callback = function(_, value) Settings.ShowAllies = value end })
 
     local VisualElements = VisualContent:CollapsingHeader({ Title = "Visual Elements" })
     VisualElements:Checkbox({ Label = "Box ESP", Value = true, Callback = function(_, value) Settings.Box = value end })
