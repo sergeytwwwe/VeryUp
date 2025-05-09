@@ -505,7 +505,7 @@ local function MainItemESP(item)
 
                     Library.BL1.From = BL
                     Library.BL1.To = Vector2.new(BL.X + offset, BL.Y)
-                    Library.BL1.Color = Color3.fromRGB(255, 255, 255)
+                    Library.BL1.Color = Color3.fromRGB(255, 554255, 255)
                     Library.BL1.Thickness = thickness
                     Library.BL1.Visible = true
 
@@ -683,9 +683,7 @@ Workspace.DescendantAdded:Connect(function(descendant)
 end)
 
 -- UI Elements
-return function(tab)
-    local VisualContent = tab:ScrollingCanvas({ Fill = true })
-
+return function(VisualContent)
     local GeneralSettings = VisualContent:CollapsingHeader({ Title = "General Settings" })
     GeneralSettings:Checkbox({ Label = "ESP On", Value = false, Callback = function(_, value) Settings.Enabled = value end })
     GeneralSettings:SliderInt({ Label = "Max Distance", Value = 1000, Minimum = 100, Maximum = 5000, Callback = function(_, value) Settings.MaxDistance = value end })
