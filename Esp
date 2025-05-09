@@ -1,80 +1,3 @@
-local InsertService = game:GetService("InsertService")
-local ReGui = loadstring(game:HttpGet('https://raw.githubusercontent.com/depthso/Dear-ReGui/refs/heads/main/ReGui.lua'))()
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
-
--- Инициализация ReGui
-local prefabsLoaded = false
-local success, errorMsg = pcall(function()
-    local prefabs = InsertService:LoadLocalAsset("rbxassetid://" .. (ReGui.PrefabsId or ""))
-    if prefabs then
-        ReGui:Init({ Prefabs = prefabs })
-        prefabsLoaded = true
-    end
-end)
-if not success or not prefabsLoaded then
-    warn("Failed to initialize ReGui: " .. (errorMsg or "No Prefabs loaded"))
-    return
-end
-
--- Цвета для ролей
-local RoleColors = {
-    ["Class D"] = Color3.fromRGB(255, 165, 0),
-    ["SCP"] = Color3.fromRGB(255, 0, 0),
-    ["Chaos Insurgency"] = Color3.fromRGB(0, 255, 0),
-    ["Mobile Task Force"] = Color3.fromRGB(0, 0, 255),
-    ["Scientist"] = Color3.fromRGB(255, 255, 0),
-    ["Unknown"] = Color3.fromRGB(128, 128, 128)
-}
-
--- Настройки
-local Settings = {
-    Enabled = false,
-    MaxDistance = 1000,
-    Box = true,
-    BoxStyle = "Modern",
-    Name = true,
-    Distance = false,
-    Health = false,
-    Weapon = false,
-    Role = false,
-    Down = false,
-    ItemESP = { Enabled = false, Box = false, BoxStyle = "Modern", Name = false, MaxDistance = 1000 },
-    RoomESP = { Enabled = false, Name = false, Distance = false, MaxDistance = 1000, Rooms = {
-        ["914"] = { Path = "Light Containment Zone:914:Room:ResetPoint", Name = "Scp 914", Color = Color3.fromRGB(255, 255, 0) },
-        ["CheckptB"] = { Path = "Light Containment Zone:CheckptB:Chkpt:Bounds:ResetPoint", Name = "Checkpoint B", Color = Color3.fromRGB(255, 255, 0) },
-        ["CheckptA"] = { Path = "Light Containment Zone:CheckptA:Chkpt:Bounds:ResetPoint", Name = "Checkpoint A", Color = Color3.fromRGB(255, 255, 0) },
-        ["173"] = { Path = "Light Containment Zone:173:Stairs:Bounds:ResetPoint", Name = "Scp 173", Color = Color3.fromRGB(255, 255, 0) },
-        ["Armory"] = { Path = "Light Containment Zone:Armory:Room:Bounds:ResetPoint", Name = "Armory", Color = Color3.fromRGB(255, 255, 0) },
-        ["330"] = { Path = "Light Containment Zone:330:Room:Bounds:ResetPoint", Name = "Scp 330", Color = Color3.fromRGB(255, 255, 0) },
-        ["Cafe"] = { Path = "Light Containment Zone:Cafe:Room:Bounds:ResetPoint", Name = "Cafe", Color = Color3.fromRGB(255, 255, 0) },
-        ["ClassD"] = { Path = "Light Containment Zone:Class D Spawn:Room:Bounds:ResetPoint", Name = "Class D", Color = Color3.fromRGB(255, 255, 0) },
-        ["049"] = { Path = "Heavy Containment Zone:049:Room:Bounds:ResetPoint", Name = "Scp 049", Color = Color3.fromRGB(0, 0, 255) },
-        ["079"] = { Path = "Heavy Containment Zone:079:Room:Bounds:ResetPoint", Name = "Scp 079", Color = Color3.fromRGB(0, 0, 255) },
-        ["096"] = { Path = "Heavy Containment Zone:096:Room:Bounds:ResetPoint", Name = "Scp 096", Color = Color3.fromRGB(0, 0, 255) },
-        ["106"] = { Path = "Heavy Containment Zone:106:Room:Bounds:ResetPoint", Name = "Scp 106", Color = Color3.fromRGB(0, 0, 255) },
-        ["939"] = { Path = "Heavy Containment Zone:939:Room:Bounds:ResetPoint", Name = "Scp 939", Color = Color3.fromRGB(0, 0, 255) },
-        ["Hid"] = { Path = "Heavy Containment Zone:Hid:Room:Bounds:ResetPoint", Name = "Hid", Color = Color3.fromRGB(0, 0, 255) },
-        ["Servers"] = { Path = "Heavy Containment Zone:Servers:Room:Bounds:ResetPoint", Name = "Servers", Color = Color3.fromRGB(0, 0, 255) },
-        ["Warhead"] = { Path = "Heavy Containment Zone:Warhead:Room:Bounds:ResetPoint", Name = "Warhead", Color = Color3.fromRGB(0, 0, 255) },
-        ["NorthCheckpoint"] = { Path = "Heavy Containment Zone:North HCZ-EZ Checkpoint:HCZ Part:Room:Bounds:ResetPoint", Name = "North HCZ-EZ Checkpoint", Color = Color3.fromRGB(255, 0, 0) },
-        ["SouthCheckpoint"] = { Path = "Heavy Containment Zone:South HCZ-EZ Checkpoint:HCZ Part:Room:Bounds:ResetPoint", Name = "South HCZ-EZ Checkpoint", Color = Color3.fromRGB(255, 0, 0) }
-    } },
-    Colors = {
-        Box = Color3.fromRGB(255, 255, 255),
-        Name = Color3.fromRGB(255, 255, 255),
-        Distance = Color3.fromRGB(255, 255, 255),
-        Health = Color3.fromRGB(255, 255, 255),
-        Weapon = Color3.fromRGB(255, 255, 255),
-        Role = Color3.fromRGB(255, 255, 255)
-    }
-}
-
--- Локальные переменные
-local Camera = Workspace.CurrentCamera
-
 -- Функция создания линии
 local function NewLine(color, thickness)
     local line = Drawing.new("Line")
@@ -106,11 +29,18 @@ end
 
 -- Получение роли игрока
 local function getPlayerRole(player)
-    if not player then return "Unknown" end
     return player.Team and player.Team.Name or "Unknown"
 end
 
 -- Получение цвета роли
+local RoleColors = {
+    ["Class D"] = Color3.fromRGB(255, 165, 0),
+    ["SCP"] = Color3.fromRGB(255, 0, 0),
+    ["Chaos Insurgency"] = Color3.fromRGB(0, 255, 0),
+    ["Mobile Task Force"] = Color3.fromRGB(0, 0, 255),
+    ["Scientist"] = Color3.fromRGB(255, 255, 0),
+    ["Unknown"] = Color3.fromRGB(128, 128, 128)
+}
 local function getRoleColor(player)
     if not player then
         local hue = tick() % 1
@@ -119,15 +49,78 @@ local function getRoleColor(player)
     local role = getPlayerRole(player)
     local character = player.Character
     local humanoid = character and character:FindFirstChild("Humanoid")
-    local isDown = humanoid and humanoid.Health <= 0
-    return isDown and Color3.fromRGB(0, 255, 255) or (RoleColors[role] or Settings.Colors.Box)
+    return humanoid and humanoid.Health <= 0 and Color3.fromRGB(0, 255, 255) or (RoleColors[role] or Color3.fromRGB(255, 255, 255))
 end
+
+-- Проверка команды для Team Check
+local function shouldShowESP(player)
+    if not player then return false end
+    local role = getPlayerRole(player)
+    if role == "SCP" then return true end
+    if role == "Class D" and not Settings.TeamCheck.ClassD then return false end
+    if role == "Chaos Insurgency" and not Settings.TeamCheck.ChaosInsurgency then return false end
+    if role == "Scientist" and not Settings.TeamCheck.Scientist then return false end
+    if role == "Mobile Task Force" and not Settings.TeamCheck.MobileTaskForce then return false end
+    return true
+end
+
+-- Настройки
+local Settings = {
+    Enabled = false,
+    MaxDistance = 1000,
+    Box = true,
+    BoxStyle = "Modern",
+    Name = true,
+    Distance = false,
+    Health = false,
+    Weapon = false,
+    Role = false,
+    TeamCheck = {
+        ClassD = true,
+        ChaosInsurgency = true,
+        Scientist = true,
+        MobileTaskForce = true
+    },
+    ItemESP = { Enabled = false, Box = false, BoxStyle = "Modern", Name = false, MaxDistance = 1000 },
+    RoomESP = { 
+        Enabled = false, 
+        Name = false, 
+        Distance = false, 
+        MaxDistance = 1000, 
+        Rooms = {
+            ["914"] = { Path = "Light Containment Zone:914:Room:ResetPoint", Name = "Scp 914", Color = Color3.fromRGB(255, 255, 0) },
+            ["CheckptB"] = { Path = "Light Containment Zone:CheckptB:Chkpt:Bounds:ResetPoint", Name = "Checkpoint B", Color = Color3.fromRGB(255, 255, 0) },
+            ["CheckptA"] = { Path = "Light Containment Zone:CheckptA:Chkpt:Bounds:ResetPoint", Name = "Checkpoint A", Color = Color3.fromRGB(255, 255, 0) },
+            ["173"] = { Path = "Light Containment Zone:173:Stairs:Bounds:ResetPoint", Name = "Scp 173", Color = Color3.fromRGB(255, 255, 0) },
+            ["Armory"] = { Path = "Light Containment Zone:Armory:Room:Bounds:ResetPoint", Name = "Armory", Color = Color3.fromRGB(255, 255, 0) },
+            ["330"] = { Path = "Light Containment Zone:330:Room:Bounds:ResetPoint", Name = "Scp 330", Color = Color3.fromRGB(255, 255, 0) },
+            ["Cafe"] = { Path = "Light Containment Zone:Cafe:Room:Bounds:ResetPoint", Name = "Cafe", Color = Color3.fromRGB(255, 255, 0) },
+            ["ClassD"] = { Path = "Light Containment Zone:Class D Spawn:Room:Bounds:ResetPoint", Name = "Class D", Color = Color3.fromRGB(255, 255, 0) },
+            ["049"] = { Path = "Heavy Containment Zone:049:Room:Bounds:ResetPoint", Name = "Scp 049", Color = Color3.fromRGB(0, 0, 255) },
+            ["079"] = { Path = "Heavy Containment Zone:079:Room:Bounds:ResetPoint", Name = "Scp 079", Color = Color3.fromRGB(0, 0, 255) },
+            ["096"] = { Path = "Heavy Containment Zone:096:Room:Bounds:ResetPoint", Name = "Scp 096", Color = Color3.fromRGB(0, 0, 255) },
+            ["106"] = { Path = "Heavy Containment Zone:106:Room:Bounds:ResetPoint", Name = "Scp 106", Color = Color3.fromRGB(0, 0, 255) },
+            ["939"] = { Path = "Heavy Containment Zone:939:Room:Bounds:ResetPoint", Name = "Scp 939", Color = Color3.fromRGB(0, 0, 255) },
+            ["Hid"] = { Path = "Heavy Containment Zone:Hid:Room:Bounds:ResetPoint", Name = "Hid", Color = Color3.fromRGB(0, 0, 255) },
+            ["Servers"] = { Path = "Heavy Containment Zone:Servers:Room:Bounds:ResetPoint", Name = "Servers", Color = Color3.fromRGB(0, 0, 255) },
+            ["Warhead"] = { Path = "Heavy Containment Zone:Warhead:Room:Bounds:ResetPoint", Name = "Warhead", Color = Color3.fromRGB(0, 0, 255) },
+            ["NorthCheckpoint"] = { Path = "Heavy Containment Zone:North HCZ-EZ Checkpoint:HCZ Part:Room:Bounds:ResetPoint", Name = "North HCZ-EZ Checkpoint", Color = Color3.fromRGB(255, 0, 0) },
+            ["SouthCheckpoint"] = { Path = "Heavy Containment Zone:South HCZ-EZ Checkpoint:HCZ Part:Room:Bounds:ResetPoint", Name = "South HCZ-EZ Checkpoint", Color = Color3.fromRGB(255, 0, 0) }
+        }
+    },
+    Colors = {
+        Box = Color3.fromRGB(255, 255, 255),
+        Name = Color3.fromRGB(255, 255, 255),
+        Distance = Color3.fromRGB(255, 255, 255),
+        Health = Color3.fromRGB(255, 255, 255),
+        Weapon = Color3.fromRGB(255, 255, 255),
+        Role = Color3.fromRGB(255, 255, 255)
+    }
+}
 
 -- Основная функция ESP для игроков
 local function MainESP(model)
     if not model then return end
-    repeat wait() until model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") and model:FindFirstChild("Head")
-
     local Library = {
         Top = NewLine(Settings.Colors.Box, 2),
         Bottom = NewLine(Settings.Colors.Box, 2),
@@ -148,8 +141,7 @@ local function MainESP(model)
         HealthBorderLeft = NewLine(Color3.fromRGB(0, 0, 0), 1),
         HealthBorderRight = NewLine(Color3.fromRGB(0, 0, 0), 1),
         Weapon = NewText(),
-        Role = NewText(),
-        DownLabel = NewText()
+        Role = NewText()
     }
 
     local function Updater()
@@ -172,7 +164,19 @@ local function MainESP(model)
             local humanoid = model:FindFirstChild("Humanoid")
             local rootPart = model:FindFirstChild("HumanoidRootPart")
             local head = model:FindFirstChild("Head")
-            if not humanoid or not rootPart or not head or humanoid.Health <= 0 then
+            if not humanoid or not rootPart or not head then
+                -- Повторная попытка найти компоненты для SCP
+                repeat wait(0.1) until model:FindFirstChild("Humanoid") and model:FindFirstChild("HumanoidRootPart") and model:FindFirstChild("Head")
+                humanoid = model:FindFirstChild("Humanoid")
+                rootPart = model:FindFirstChild("HumanoidRootPart")
+                head = model:FindFirstChild("Head")
+                if not humanoid or not rootPart or not head then
+                    Vis(Library, false)
+                    return
+                end
+            end
+
+            if player and not shouldShowESP(player) then
                 Vis(Library, false)
                 return
             end
@@ -196,7 +200,7 @@ local function MainESP(model)
 
             local height = bottomScreen.Y - topScreen.Y
             local width = height * 0.5
-            local centerX = topScreen.X
+            local centerX = (topScreen.X + bottomScreen.X) / 2
 
             local TL = Vector2.new(centerX - width / 2, topScreen.Y)
             local TR = Vector2.new(centerX + width / 2, topScreen.Y)
@@ -209,32 +213,32 @@ local function MainESP(model)
 
             if Settings.Box then
                 if Settings.BoxStyle == "Default" then
-                    Library.Top.From = Vector2.new(TL.X, TL.Y)
-                    Library.Top.To = Vector2.new(TR.X, TR.Y)
+                    Library.Top.From = TL
+                    Library.Top.To = TR
                     Library.Top.Color = boxColor
                     Library.Top.Thickness = thickness
                     Library.Top.Visible = true
 
-                    Library.Bottom.From = Vector2.new(BL.X, BL.Y)
-                    Library.Bottom.To = Vector2.new(BR.X, BR.Y)
+                    Library.Bottom.From = BL
+                    Library.Bottom.To = BR
                     Library.Bottom.Color = boxColor
                     Library.Bottom.Thickness = thickness
                     Library.Bottom.Visible = true
 
-                    Library.Left.From = Vector2.new(TL.X, TL.Y)
-                    Library.Left.To = Vector2.new(BL.X, BL.Y)
+                    Library.Left.From = TL
+                    Library.Left.To = BL
                     Library.Left.Color = boxColor
                     Library.Left.Thickness = thickness
                     Library.Left.Visible = true
 
-                    Library.Right.From = Vector2.new(TR.X, TR.Y)
-                    Library.Right.To = Vector2.new(BR.X, BR.Y)
+                    Library.Right.From = TR
+                    Library.Right.To = BR
                     Library.Right.Color = boxColor
                     Library.Right.Thickness = thickness
                     Library.Right.Visible = true
 
                     Vis({Library.TL1, Library.TL2, Library.TR1, Library.TR2, Library.BL1, Library.BL2, Library.BR1, Library.BR2}, false)
-                else -- Modern
+                else
                     Library.TL1.From = TL
                     Library.TL1.To = Vector2.new(TL.X + offset, TL.Y)
                     Library.TL1.Color = boxColor
@@ -294,16 +298,6 @@ local function MainESP(model)
             local topOffset = 0
             local bottomOffset = 0
 
-            if Settings.Down and humanoid.Health <= 0 then
-                Library.DownLabel.Text = "Down"
-                Library.DownLabel.Position = Vector2.new(centerXText, TL.Y - textSpacing - topOffset)
-                Library.DownLabel.Color = Color3.fromRGB(0, 255, 255)
-                Library.DownLabel.Visible = true
-                topOffset = topOffset + textSpacing
-            else
-                Library.DownLabel.Visible = false
-            end
-
             if Settings.Role and player then
                 Library.Role.Text = getPlayerRole(player)
                 Library.Role.Position = Vector2.new(centerXText, TL.Y - textSpacing - topOffset)
@@ -326,7 +320,7 @@ local function MainESP(model)
 
             if Settings.Distance then
                 Library.Distance.Text = math.floor(distance) .. " studs"
-                Library.Distance.Position = Vector2.new(centerXText, BL.Y + textSpacing + bottomOffset)
+                Library.Distance.Position = Vector2.new(centerXText, BL.Y + textSpacing - bottomOffset)
                 Library.Distance.Color = Settings.Colors.Distance
                 Library.Distance.Visible = true
                 bottomOffset = bottomOffset + textSpacing
@@ -337,7 +331,7 @@ local function MainESP(model)
             if Settings.Health then
                 local health = humanoid.Health
                 local maxHealth = humanoid.MaxHealth
-                Library.Health.Text = health <= 0 and "Down" or math.floor(health) .. "/" .. math.floor(maxHealth)
+                Library.Health.Text = health <= 0 and "Dead" or math.floor(health) .. "/" .. math.floor(maxHealth)
                 Library.Health.Position = Vector2.new(centerXText, BL.Y + textSpacing + bottomOffset)
                 Library.Health.Color = Settings.Colors.Health
                 Library.Health.Visible = true
@@ -388,7 +382,7 @@ local function MainESP(model)
     coroutine.wrap(Updater)()
 end
 
--- Основная функция Item ESP
+-- Основная функция Item ESP (только в Workspace)
 local function MainItemESP(item)
     if not item then return end
     repeat wait() until item:FindFirstChild("Handle") or item:FindFirstChildWhichIsA("BasePart")
@@ -417,7 +411,7 @@ local function MainItemESP(item)
                 return
             end
 
-            if not item or not item.Parent then
+            if not item or not item.Parent or item.Parent == LocalPlayer.Character then
                 for _, v in pairs(Library) do
                     if v.Remove then v:Remove() end
                 end
@@ -484,7 +478,7 @@ local function MainItemESP(item)
                     Library.Right.Visible = true
 
                     Vis({Library.TL1, Library.TL2, Library.TR1, Library.TR2, Library.BL1, Library.BL2, Library.BR1, Library.BR2}, false)
-                else -- Modern
+                else
                     Library.TL1.From = TL
                     Library.TL1.To = Vector2.new(TL.X + offset, TL.Y)
                     Library.TL1.Color = Color3.fromRGB(255, 255, 255)
@@ -582,7 +576,6 @@ local function MainRoomESP(roomName, roomData)
                 return
             end
 
-            -- Проверяем, существует ли resetPoint, если нет — пытаемся найти снова
             if not resetPoint or not resetPoint.Parent then
                 resetPoint = FindResetPoint()
                 if not resetPoint then
@@ -650,17 +643,17 @@ Players.PlayerAdded:Connect(function(player)
     player.CharacterAdded:Connect(function(character)
         coroutine.wrap(MainESP)(character)
     end)
-end)
+end
 
 -- Инициализация Item ESP
 for _, item in pairs(Workspace:GetDescendants()) do
-    if item:IsA("Tool") then
+    if item:IsA("Tool") and item.Parent == Workspace then
         coroutine.wrap(MainItemESP)(item)
     end
 end
 
 Workspace.DescendantAdded:Connect(function(descendant)
-    if descendant:IsA("Tool") then
+    if descendant:IsA("Tool") and descendant.Parent == Workspace then
         coroutine.wrap(MainItemESP)(descendant)
     end
 end)
@@ -670,7 +663,6 @@ for roomName, roomData in pairs(Settings.RoomESP.Rooms) do
     coroutine.wrap(MainRoomESP)(roomName, roomData)
 end
 
--- Обновление Room ESP при добавлении новых объектов
 Workspace.DescendantAdded:Connect(function(descendant)
     if not Settings.RoomESP.Enabled then return end
     for roomName, roomData in pairs(Settings.RoomESP.Rooms) do
@@ -691,38 +683,45 @@ Workspace.DescendantAdded:Connect(function(descendant)
 end)
 
 -- UI Elements
-local Window = ReGui:Window({ Title = "ESP Menu", Size = UDim2.new(0, 400, 0, 300) }):Center()
-local Content = Window:ScrollingCanvas({ Fill = true })
+return function(tab)
+    local VisualContent = tab:ScrollingCanvas({ Fill = true })
 
-local GeneralSettings = Content:CollapsingHeader({ Title = "General Settings" })
-GeneralSettings:Checkbox({ Label = "ESP On", Value = false, Callback = function(_, value) Settings.Enabled = value end })
-GeneralSettings:SliderInt({ Label = "Max Distance", Value = 1000, Minimum = 100, Maximum = 5000, Callback = function(_, value) Settings.MaxDistance = value end })
+    local GeneralSettings = VisualContent:CollapsingHeader({ Title = "General Settings" })
+    GeneralSettings:Checkbox({ Label = "ESP On", Value = false, Callback = function(_, value) Settings.Enabled = value end })
+    GeneralSettings:SliderInt({ Label = "Max Distance", Value = 1000, Minimum = 100, Maximum = 5000, Callback = function(_, value) Settings.MaxDistance = value end })
+    GeneralSettings:TreeNode({ Title = "Team Check" })
+    :Checkbox({ Label = "Class D", Value = true, Callback = function(_, value) Settings.TeamCheck.ClassD = value end })
+    :Checkbox({ Label = "Chaos Insurgency", Value = true, Callback = function(_, value) Settings.TeamCheck.ChaosInsurgency = value end })
+    :Checkbox({ Label = "Scientist", Value = true, Callback = function(_, value) Settings.TeamCheck.Scientist = value end })
+    :Checkbox({ Label = "Mobile Task Force", Value = true, Callback = function(_, value) Settings.TeamCheck.MobileTaskForce = value end })
 
-local VisualElements = Content:CollapsingHeader({ Title = "Visual Elements" })
-VisualElements:Checkbox({ Label = "Box ESP", Value = true, Callback = function(_, value) Settings.Box = value end })
-VisualElements:Combo({ Label = "Box Style", Selected = "Modern", Items = {"Default", "Modern"}, Callback = function(_, value) Settings.BoxStyle = value end })
-VisualElements:Checkbox({ Label = "Name ESP", Value = true, Callback = function(_, value) Settings.Name = value end })
-VisualElements:Checkbox({ Label = "Distance ESP", Value = false, Callback = function(_, value) Settings.Distance = value end })
-VisualElements:Checkbox({ Label = "Health ESP", Value = false, Callback = function(_, value) Settings.Health = value end })
-VisualElements:Checkbox({ Label = "Weapon ESP", Value = false, Callback = function(_, value) Settings.Weapon = value end })
-VisualElements:Checkbox({ Label = "Role ESP", Value = false, Callback = function(_, value) Settings.Role = value end })
-VisualElements:Checkbox({ Label = "Down", Value = false, Callback = function(_, value) Settings.Down = value end })
+    local VisualElements = VisualContent:CollapsingHeader({ Title = "Visual Elements" })
+    VisualElements:Checkbox({ Label = "Box ESP", Value = true, Callback = function(_, value) Settings.Box = value end })
+    VisualElements:Combo({ Label = "Box Style", Selected = "Modern", Items = {"Default", "Modern"}, Callback = function(_, value) Settings.BoxStyle = value end })
+    VisualElements:Checkbox({ Label = "Name ESP", Value = true, Callback = function(_, value) Settings.Name = value end })
+    VisualElements:Checkbox({ Label = "Distance ESP", Value = false, Callback = function(_, value) Settings.Distance = value end })
+    VisualElements:Checkbox({ Label = "Health ESP", Value = false, Callback = function(_, value) Settings.Health = value end })
+    VisualElements:Checkbox({ Label = "Weapon ESP", Value = false, Callback = function(_, value) Settings.Weapon = value end })
+    VisualElements:Checkbox({ Label = "Role ESP", Value = false, Callback = function(_, value) Settings.Role = value end })
 
-local ColorsSettings = VisualElements:TreeNode({ Title = "Colors" })
-ColorsSettings:InputColor3({ Label = "Box Color", Value = Settings.Colors.Box, Callback = function(_, value) Settings.Colors.Box = value end })
-ColorsSettings:InputColor3({ Label = "Name Color", Value = Settings.Colors.Name, Callback = function(_, value) Settings.Colors.Name = value end })
-ColorsSettings:InputColor3({ Label = "Distance Color", Value = Settings.Colors.Distance, Callback = function(_, value) Settings.Colors.Distance = value end })
-ColorsSettings:InputColor3({ Label = "Health Color", Value = Settings.Colors.Health, Callback = function(_, value) Settings.Colors.Health = value end })
-ColorsSettings:InputColor3({ Label = "Weapon Color", Value = Settings.Colors.Weapon, Callback = function(_, value) Settings.Colors.Weapon = value end })
-ColorsSettings:InputColor3({ Label = "Role Color", Value = Settings.Colors.Role, Callback = function(_, value) Settings.Colors.Role = value end })
+    local ColorsSettings = VisualElements:TreeNode({ Title = "Colors" })
+    ColorsSettings:InputColor3({ Label = "Box Color", Value = Settings.Colors.Box, Callback = function(_, value) Settings.Colors.Box = value end })
+    ColorsSettings:InputColor3({ Label = "Name Color", Value = Settings.Colors.Name, Callback = function(_, value) Settings.Colors.Name = value end })
+    ColorsSettings:InputColor3({ Label = "Distance Color", Value = Settings.Colors.Distance, Callback = function(_, value) Settings.Colors.Distance = value end })
+    ColorsSettings:InputColor3({ Label = "Health Color", Value = Settings.Colors.Health, Callback = function(_, value) Settings.Colors.Health = value end })
+    ColorsSettings:InputColor3({ Label = "Weapon Color", Value = Settings.Colors.Weapon, Callback = function(_, value) Settings.Colors.Weapon = value end })
+    ColorsSettings:InputColor3({ Label = "Role Color", Value = Settings.Colors.Role, Callback = function(_, value) Settings.Colors.Role = value end })
 
-local ItemESP = VisualElements:TreeNode({ Title = "Item ESP" })
-ItemESP:Checkbox({ Label = "Enable Item ESP", Value = false, Callback = function(_, value) Settings.ItemESP.Enabled = value end })
-ItemESP:Checkbox({ Label = "Item Box ESP", Value = false, Callback = function(_, value) Settings.ItemESP.Box = value end })
-ItemESP:Combo({ Label = "Item Box Style", Selected = "Modern", Items = {"Default", "Modern"}, Callback = function(_, value) Settings.ItemESP.BoxStyle = value end })
-ItemESP:Checkbox({ Label = "Item Name ESP", Value = false, Callback = function(_, value) Settings.ItemESP.Name = value end })
+    local ItemESP = VisualElements:TreeNode({ Title = "Item ESP" })
+    ItemESP:Checkbox({ Label = "Enable Item ESP", Value = false, Callback = function(_, value) Settings.ItemESP.Enabled = value end })
+    ItemESP:Checkbox({ Label = "Item Box ESP", Value = false, Callback = function(_, value) Settings.ItemESP.Box = value end })
+    ItemESP:Combo({ Label = "Item Box Style", Selected = "Modern", Items = {"Default", "Modern"}, Callback = function(_, value) Settings.ItemESP.BoxStyle = value end })
+    ItemESP:Checkbox({ Label = "Item Name ESP", Value = false, Callback = function(_, value) Settings.ItemESP.Name = value end })
+    ItemESP:SliderInt({ Label = "Item Max Distance", Value = 1000, Minimum = 100, Maximum = 5000, Callback = function(_, value) Settings.ItemESP.MaxDistance = value end })
 
-local RoomsSettings = VisualElements:TreeNode({ Title = "Rooms" })
-RoomsSettings:Checkbox({ Label = "Room Enable", Value = false, Callback = function(_, value) Settings.RoomESP.Enabled = value end })
-RoomsSettings:Checkbox({ Label = "Name", Value = false, Callback = function(_, value) Settings.RoomESP.Name = value end })
-RoomsSettings:Checkbox({ Label = "Distance", Value = false, Callback = function(_, value) Settings.RoomESP.Distance = value end })
+    local RoomsSettings = VisualElements:TreeNode({ Title = "Rooms" })
+    RoomsSettings:Checkbox({ Label = "Room Enable", Value = false, Callback = function(_, value) Settings.RoomESP.Enabled = value end })
+    RoomsSettings:Checkbox({ Label = "Name", Value = false, Callback = function(_, value) Settings.RoomESP.Name = value end })
+    RoomsSettings:Checkbox({ Label = "Distance", Value = false, Callback = function(_, value) Settings.RoomESP.Distance = value end })
+    RoomsSettings:SliderInt({ Label = "Room Max Distance", Value = 1000, Minimum = 100, Maximum = 5000, Callback = function(_, value) Settings.RoomESP.MaxDistance = value end })
+end
