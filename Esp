@@ -204,7 +204,7 @@ local function MainESP(model, services, settings)
 
             local boxColor = getRoleColor(player)
             local thickness = math.clamp(2 / (distance * 0.01), 1, 3)
-            local offset = math.clamp(10 * (services.Camera.ViewportSize.Y / 1080), 5, 15)
+            local offset = height / 6 -- Динамический offset для Modern бокса
 
             if settings.Box then
                 if settings.BoxStyle == "Default" then
@@ -444,7 +444,7 @@ local function MainItemESP(item, services, settings)
             local BR = Vector2.new(pos.X + boxWidth / 2, pos.Y + boxOffsetY)
 
             local thickness = math.clamp(1 / (distance * 0.01), 1, 3)
-            local offset = math.clamp(10 * (services.Camera.ViewportSize.Y / 1080), 5, 15)
+            local offset = boxHeight / 6 -- Динамический offset для Modern бокса
 
             if settings.ItemESP.Box then
                 if settings.ItemESP.BoxStyle == "Default" then
