@@ -98,6 +98,10 @@ local CombatContent = CombatTab:ScrollingCanvas({Fill = true})
 local MiscTab = TabsWindow:CreateTab({Name = "Misc"})
 local MiscContent = MiscTab:ScrollingCanvas({Fill = true})
 
+-- Вкладка Settings
+local SettingsTab = TabsWindow:CreateTab({Name = "Settings"})
+local SettingsContent = SettingsTab:ScrollingCanvas({Fill = true})
+
 -- Noclip
 local noclipEnabled = false
 local steppedConnection = nil
@@ -806,3 +810,152 @@ MiscHeader:SliderInt({
         end
     end
 })
+
+-- Settings Tab: Window Options and Config Management
+local baseFolder = "VeryUp"
+local scpDemonstrationFolder = baseFolder .. "/Scp Demonstration"
+local configFolder = scpDemonstrationFolder .. "/Config"
+if not isfolder(baseFolder) then makefolder(baseFolder) end
+if not isfolder(scpDemonstrationFolder) then makefolder(scpDemonstrationFolder) end
+if not isfolder(configFolder) then makefolder(configFolder) end
+
+local configNameInput = ""
+local configList = {}
+local configCombo = nil
+
+local function updateConfigList()
+    local files = listfiles(configFolder)
+    if not files then
+        warn("listfiles returned nil for folder: " .. configFolder)
+        files = {}
+    end
+    configList = {}
+    for _, file in pairs(files) do
+        local configName = file:match("[^\\/]+%.ini$")
+        if configName then
+            configName = configName:match("^(.+)%.ini$")
+            if configName then
+                table.insert(configList, configName)
+                warn("Found config: " .. configName)
+            else
+                warn("Failed to extract config name from file: " .. file)
+            end
+        else
+            warn("File does not match pattern: " .. file)
+        end
+    end
+    warn("Total configs found: " .. #configList)
+    if configCombo then
+        configCombo.Items = configList
+        if #configList > 0 then
+            configCombo.Selected = configList[1]
+            configNameInput = configList[1]
+        else
+            configCombo.Selected = ""
+            configNameInput = ""
+        end
+    else
+        warn("configCombo is nil, cannot update Items")
+    end
+end
+
+local settingsSuccess, settingsError = pcall(function()
+    SettingsContent:Separator({Text = "Window Options"})
+    local optionsRow = SettingsContent:Row()
+    optionsRow:Checkbox({
+        IniFlag = "NoResize",
+        Label = "No Resize",
+        Value = false,
+        Callback = function(self, value)
+            TabsWindow:UpdateConfig({NoResize = value})
+        end
+    })
+    optionsRow:Checkbox({
+        IniFlag = "NoTitleBar",
+        Label = "No Title Bar",
+        Value = false,
+        Callback = function(self, value)
+            TabsWindow:UpdateConfig({NoTitleBar = value})
+        end
+    })
+    optionsRow:Checkbox({
+        IniFlag = "NoClose",
+        Label = "No Close",
+        Value = false,
+        Callback = function(self, value)
+            TabsWindow:UpdateConfig({NoClose = value})
+        end
+    })
+    SettingsContent:Separator({Text = "Config Management"})
+    SettingsContent:InputText({
+        IniFlag = "ConfigNameInput",
+        Label = "Config Name",
+        Value = "",
+        Callback = function(self, value)
+            configNameInput = value
+        end
+    })
+    SettingsContent:Button({
+        Text = "Create Config",
+        Callback = function()
+            if configNameInput ~= "" then
+                local configPath = configFolder .. "/" .. configNameInput .. ".ini"
+                if isfile(configPath) then
+                    showNotification("This config already exists!", true)
+                    return
+                end
+                local saveString = ReGui:DumpIni(true)
+                if saveString then
+                    writefile(configPath, saveString)
+                    updateConfigList()
+                end
+            end
+        end
+    })
+    SettingsContent:Button({
+        Text = "Load Config",
+        Callback = function()
+            if configNameInput ~= "" then
+                local configPath = configFolder .. "/" .. configNameInput .. ".ini"
+                if isfile(configPath) then
+                    local configData = readfile(configPath)
+                    ReGui:LoadIni(configData, true)
+                end
+            end
+        end
+    })
+    SettingsContent:Button({
+        Text = "Reload Config",
+        Callback = function()
+            updateConfigList()
+        end
+    })
+    configCombo = SettingsContent:Combo({
+        Label = "List Config",
+        Selected = "",
+        Items = configList,
+        Callback = function(self, value)
+            configNameInput = value
+        end
+    })
+    SettingsContent:Button({
+        Text = "Delete Config",
+        Callback = function()
+            if configNameInput ~= "" then
+                local configPath = configFolder .. "/" .. configNameInput .. ".ini"
+                if isfile(configPath) then
+                    delfile(configPath)
+                    updateConfigList()
+                end
+            end
+        end
+    })
+    updateConfigList()
+end)
+if not settingsSuccess then
+    warn("Failed to initialize settings: " .. settingsError)
+    showNotification("Failed to initialize settings: " .. settingsError, true)
+end
+
+-- Показываем окно
+TabsWindow:ToggleVisibility()
