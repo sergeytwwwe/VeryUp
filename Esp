@@ -59,8 +59,8 @@ end
 local function shouldShowESP(player, services, settings)
     if not player then return false end
     local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
-    if not humanoid or humanoid.Health <= 0 then return false end -- Исключение мёртвых
-    if not settings.TeamCheck then return true end -- По умолчанию показывать всех
+    if not humanoid or humanoid.Health <= 0 then return false end
+    if not settings.TeamCheck then return true end
     local localRole = getPlayerRole(services.LocalPlayer)
     local playerRole = getPlayerRole(player)
     local teamData = TeamRelations[localRole] or { Allies = {}, Enemies = {} }
@@ -161,8 +161,7 @@ local function MainESP(model, services, settings)
 
             local humanoid = model:FindFirstChild("Humanoid")
             local rootPart = model:FindFirstChild("HumanoidRootPart")
-            local head = model:FindFirstChild("Head")
-            if not humanoid or not rootPart or not head or humanoid.Health <= 0 then -- Исключение мёртвых
+            if not humanoid or humanoid.Health <= 0 or not rootPart then
                 Vis(Library, false)
                 return
             end
