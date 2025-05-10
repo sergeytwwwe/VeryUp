@@ -106,7 +106,9 @@ local Settings = {
             ["SouthCheckpoint"] = { Path = "Heavy Containment Zone:South HCZ-EZ Checkpoint:HCZ Part:Room:Bounds:ResetPoint", Name = "South HCZ-EZ Checkpoint", Color = Color3.fromRGB(255, 0, 0) },
             ["GateA"] = { Path = "Entrance Zone:GateA:Room:Bounds:ResetPoint", Name = "Gate A", Color = Color3.fromRGB(255, 0, 0) },
             ["GateB"] = { Path = "Entrance Zone:GateB:Room:Bounds:ResetPoint", Name = "Gate B", Color = Color3.fromRGB(255, 0, 0) },
-            ["End"] = { Path = "End:Room:Bounds:ResetPoint", Name = "End", Color = Color3.fromRGB(0, 100, 0) }
+            ["End"] = { Path = "End:Room:Bounds:ResetPoint", Name = "End", Color = Color3.fromRGB(0, 100, 0) },
+            ["CheckptA_HCZ"] = { Path = "Heavy Containment Zone:CheckptA:Room:Bounds:ResetPoint", Name = "Checkpoint A", Color = Color3.fromRGB(0, 0, 255) },
+            ["CheckptB_HCZ"] = { Path = "Heavy Containment Zone:CheckptB:Room:Bounds:ResetPoint", Name = "Checkpoint B", Color = Color3.fromRGB(0, 0, 255) }
         }
     },
     Colors = {
@@ -201,8 +203,8 @@ local function MainESP(model, services, settings)
             local BR = Vector2.new(centerX + width / 2, bottomScreen.Y)
 
             local boxColor = getRoleColor(player)
-            local thickness = math.clamp(2 / (distance * 0.01), 1, 3) -- Фиксированная толщина с ограничением
-            local offset = math.clamp(10 * (services.Camera.ViewportSize.Y / 1080), 5, 15) -- Масштабируемый offset
+            local thickness = math.clamp(2 / (distance * 0.01), 1, 3)
+            local offset = math.clamp(10 * (services.Camera.ViewportSize.Y / 1080), 5, 15)
 
             if settings.Box then
                 if settings.BoxStyle == "Default" then
@@ -636,6 +638,28 @@ local function initPlayerESP(services, settings)
         if player == services.LocalPlayer then return end
         player.CharacterAdded:Connect(function(character)
             coroutine.wrap(MainESP)(character, services, settings)
+            -- Модификация оружия для игрока
+            local function modifyWeapon(tool)
+                if tool and tool:FindFirstChild("Settings") then
+                    local settings = require(tool.Settings)
+                    settings.InfiniteAmmo = true -- Бесконечные патроны
+                    settings.RecoilPattern = {{0, 0, 0, 0, 0}} -- Отключение отдачи
+                    settings.BulletMinSpread = 0 -- Отключение минимального разброса
+                    settings.BulletMaxSpread = 0 -- Отключение максимального разброса
+                end
+            end
+            if player.Character then
+                for _, tool in pairs(player.Character:GetChildren()) do
+                    if tool:IsA("Tool") then
+                        modifyWeapon(tool)
+                    end
+                end
+            end
+            player.Character.ChildAdded:Connect(function(child)
+                if child:IsA("Tool") then
+                    modifyWeapon(child)
+                end
+            end)
         end)
     end)
 end
@@ -722,7 +746,9 @@ return function(VisualContent, services)
                 ["SouthCheckpoint"] = { Path = "Heavy Containment Zone:South HCZ-EZ Checkpoint:HCZ Part:Room:Bounds:ResetPoint", Name = "South HCZ-EZ Checkpoint", Color = Color3.fromRGB(255, 0, 0) },
                 ["GateA"] = { Path = "Entrance Zone:GateA:Room:Bounds:ResetPoint", Name = "Gate A", Color = Color3.fromRGB(255, 0, 0) },
                 ["GateB"] = { Path = "Entrance Zone:GateB:Room:Bounds:ResetPoint", Name = "Gate B", Color = Color3.fromRGB(255, 0, 0) },
-                ["End"] = { Path = "End:Room:Bounds:ResetPoint", Name = "End", Color = Color3.fromRGB(0, 100, 0) }
+                ["End"] = { Path = "End:Room:Bounds:ResetPoint", Name = "End", Color = Color3.fromRGB(0, 100, 0) },
+                ["CheckptA_HCZ"] = { Path = "Heavy Containment Zone:CheckptA:Room:Bounds:ResetPoint", Name = "Checkpoint A", Color = Color3.fromRGB(0, 0, 255) },
+                ["CheckptB_HCZ"] = { Path = "Heavy Containment Zone:CheckptB:Room:Bounds:ResetPoint", Name = "Checkpoint B", Color = Color3.fromRGB(0, 0, 255) }
             }
         },
         Colors = {
