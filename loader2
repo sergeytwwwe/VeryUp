@@ -1,211 +1,525 @@
-local Players = game:GetService("Players") local CoreGui = game:GetService("CoreGui") local MarketplaceService = game:GetService("MarketplaceService") local TweenService = game:GetService("TweenService") local LocalPlayer = Players.LocalPlayerS
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local MarketplaceService = game:GetService("MarketplaceService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
 
-if getgenv().VeryUpLoaderMainInjected then warn("Error: Main Loader is already injected!") return end getgenv().VeryUpLoaderMainInjected = true
+if getgenv().VeryUpLoaderMainInjected then
+    warn("Error: Main Loader is already injected!")
+    return
+end
+getgenv().VeryUpLoaderMainInjected = true
 
-local function detectInjector() local executorName = table.concat({identifyexecutor()}, " ") or "Unknown" return executorName end local injectorName = detectInjector()
+local function detectInjector()
+    local executorName = table.concat({identifyexecutor()}, " ") or "Unknown"
+    return executorName
+end
+local injectorName = detectInjector()
 
-local screenGui = Instance.new("ScreenGui") screenGui.Name = "VeryUpLoader" screenGui.ResetOnSpawn = false screenGui.DisplayOrder = 100 screenGui.Parent = CoreGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "VeryUpLoader"
+screenGui.ResetOnSpawn = false
+screenGui.DisplayOrder = 100
+screenGui.Parent = CoreGui
 
-local mainFrame = Instance.new("Frame") mainFrame.Size = UDim2.new(0, 500, 0, 350) mainFrame.Position = UDim2.new(0.5, -250, 0.5, -175) mainFrame.BackgroundTransparency = 0.3 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 25, 50) mainFrame.BorderSizePixel = 0 mainFrame.Parent = screenGui
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 500, 0, 350)
+mainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
+mainFrame.BackgroundTransparency = 0.3
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 25, 50)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
 
-local gradient = Instance.new("UIGradient") gradient.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 50, 100)), ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 25, 50)) }) gradient.Rotation = 45 gradient.Parent = mainFrame
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 50, 100)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 25, 50))
+})
+gradient.Rotation = 45
+gradient.Parent = mainFrame
 
-local corner = Instance.new("UICorner") corner.CornerRadius = UDim.new(0, 15) corner.Parent = mainFrame
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 15)
+corner.Parent = mainFrame
 
-local shadow = Instance.new("ImageLabel") shadow.Size = UDim2.new(1, 20, 1, 20) shadow.Position = UDim2.new(0, -10, 0, -10) shadow.BackgroundTransparency = 1 shadow.Image = "rbxassetid://1316045217" shadow.ImageTransparency = 0.7 shadow.ImageColor3 = Color3.fromRGB(0, 0, 0) shadow.ScaleType = Enum.ScaleType.Slice shadow.SliceCenter = Rect.new(10, 10, 118, 118) shadow.Parent = mainFrame
+local shadow = Instance.new("ImageLabel")
+shadow.Size = UDim2.new(1, 20, 1, 20)
+shadow.Position = UDim2.new(0, -10, 0, -10)
+shadow.BackgroundTransparency = 1
+shadow.Image = "rbxassetid://1316045217"
+shadow.ImageTransparency = 0.7
+shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+shadow.ScaleType = Enum.ScaleType.Slice
+shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+shadow.Parent = mainFrame
 
-local injectorLabel = Instance.new("TextLabel") injectorLabel.Size = UDim2.new(0, 200, 0, 30) injectorLabel.Position = UDim2.new(0, 15, 0, 15) injectorLabel.BackgroundTransparency = 1 injectorLabel.Text = "Injector: " .. injectorName injectorLabel.TextColor3 = Color3.fromRGB(200, 200, 255) injectorLabel.TextSize = 18 injectorLabel.Font = Enum.Font.SourceSansBold injectorLabel.TextXAlignment = Enum.TextXAlignment.Left injectorLabel.Parent = mainFrame
+local injectorLabel = Instance.new("TextLabel")
+injectorLabel.Size = UDim2.new(0, 200, 0, 30)
+injectorLabel.Position = UDim2.new(0, 15, 0, 15)
+injectorLabel.BackgroundTransparency = 1
+injectorLabel.Text = "Injector: " .. injectorName
+injectorLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+injectorLabel.TextSize = 18
+injectorLabel.Font = Enum.Font.SourceSansBold
+injectorLabel.TextXAlignment = Enum.TextXAlignment.Left
+injectorLabel.Parent = mainFrame
 
-local separator = Instance.new("Frame") separator.Size = UDim2.new(0, 470, 0, 2) separator.Position = UDim2.new(0, 15, 0, 50) separator.BackgroundTransparency = 0.5 separator.BackgroundColor3 = Color3.fromRGB(100, 100, 255) separator.BorderSizePixel = 0 separator.Parent = mainFrame
+local separator = Instance.new("Frame")
+separator.Size = UDim2.new(0, 470, 0, 2)
+separator.Position = UDim2.new(0, 15, 0, 50)
+separator.BackgroundTransparency = 0.5
+separator.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+separator.BorderSizePixel = 0
+separator.Parent = mainFrame
 
-local separatorGradient = Instance.new("UIGradient") separatorGradient.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 255)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 200, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 100, 255)) }) separatorGradient.Parent = separator
+local separatorGradient = Instance.new("UIGradient")
+separatorGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 200, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 100, 255))
+})
+separatorGradient.Parent = separator
 
-local gameNameLabel = Instance.new("TextLabel") gameNameLabel.Size = UDim2.new(0, 200, 0, 30) gameNameLabel.Position = UDim2.new(1, -215, 0, 15) gameNameLabel.BackgroundTransparency = 1 gameNameLabel.Text = "Game: Loading..." gameNameLabel.TextColor3 = Color3.fromRGB(200, 200, 255) gameNameLabel.TextSize = 18 gameNameLabel.Font = Enum.Font.SourceSansBold gameNameLabel.TextXAlignment = Enum.TextXAlignment.Right gameNameLabel.Parent = mainFrame
+local gameNameLabel = Instance.new("TextLabel")
+gameNameLabel.Size = UDim2.new(0, 200, 0, 30)
+gameNameLabel.Position = UDim2.new(1, -215, 0, 15)
+gameNameLabel.BackgroundTransparency = 1
+gameNameLabel.Text = "Game: Loading..."
+gameNameLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+gameNameLabel.TextSize = 18
+gameNameLabel.Font = Enum.Font.SourceSansBold
+gameNameLabel.TextXAlignment = Enum.TextXAlignment.Right
+gameNameLabel.Parent = mainFrame
 
-local success, gameInfo = pcall(function() return MarketplaceService:GetProductInfo(game.PlaceId) end) if success then gameNameLabel.Text = "Game: " .. gameInfo.Name else gameNameLabel.Text = "Game: Unknown" end
+local success, gameInfo = pcall(function()
+    return MarketplaceService:GetProductInfo(game.PlaceId)
+end)
+if success then
+    gameNameLabel.Text = "Game: " .. gameInfo.Name
+else
+    gameNameLabel.Text = "Game: Unknown"
+end
 
-local lastUpdateLabel = Instance.new("TextLabel") lastUpdateLabel.Size = UDim2.new(0, 200, 0, 20) lastUpdateLabel.Position = UDim2.new(0.5, -100, 1, -35) lastUpdateLabel.BackgroundTransparency = 1 lastUpdateLabel.Text = "Last Update: 12.04.25" lastUpdateLabel.TextColor3 = Color3.fromRGB(150, 150, 200) lastUpdateLabel.TextSize = 14 lastUpdateLabel.Font = Enum.Font.SourceSans lastUpdateLabel.Parent = mainFrame
+local lastUpdateLabel = Instance.new("TextLabel")
+lastUpdateLabel.Size = UDim2.new(0, 200, 0, 20)
+lastUpdateLabel.Position = UDim2.new(0.5, -100, 1, -35)
+lastUpdateLabel.BackgroundTransparency = 1
+lastUpdateLabel.Text = "Last Update: 12.04.25"
+lastUpdateLabel.TextColor3 = Color3.fromRGB(150, 150, 200)
+lastUpdateLabel.TextSize = 14
+lastUpdateLabel.Font = Enum.Font.SourceSans
+lastUpdateLabel.Parent = mainFrame
 
-local exitButton = Instance.new("TextButton") exitButton.Size = UDim2.new(0, 80, 0, 30) exitButton.Position = UDim2.new(0, 15, 1, -40) exitButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100) exitButton.BackgroundTransparency = 0.3 exitButton.Text = "exit" exitButton.TextColor3 = Color3.fromRGB(255, 255, 255) exitButton.TextSize = 16 exitButton.Font = Enum.Font.SourceSansBold exitButton.Parent = mainFrame
+local exitButton = Instance.new("TextButton")
+exitButton.Size = UDim2.new(0, 80, 0, 30)
+exitButton.Position = UDim2.new(0, 15, 1, -40)
+exitButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+exitButton.BackgroundTransparency = 0.3
+exitButton.Text = "exit"
+exitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+exitButton.TextSize = 16
+exitButton.Font = Enum.Font.SourceSansBold
+exitButton.Parent = mainFrame
 
-local exitCorner = Instance.new("UICorner") exitCorner.CornerRadius = UDim.new(0, 10) exitCorner.Parent = exitButton
+local exitCorner = Instance.new("UICorner")
+exitCorner.CornerRadius = UDim.new(0, 10)
+exitCorner.Parent = exitButton
 
-local exitStroke = Instance.new("UIStroke") exitStroke.Thickness = 1 exitStroke.Color = Color3.fromRGB(30, 25, 50) exitStroke.Transparency = 0.7 exitStroke.Parent = exitButton
+local exitStroke = Instance.new("UIStroke")
+exitStroke.Thickness = 1
+exitStroke.Color = Color3.fromRGB(30, 25, 50)
+exitStroke.Transparency = 0.7
+exitStroke.Parent = exitButton
 
-local function animateButton(button, hover) local targetTransparency = hover and 0.2 or 0.3 local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out) local tween = TweenService:Create(button, tweenInfo, {BackgroundTransparency = targetTransparency}) tween:Play() end
+local function animateButton(button, hover)
+    local targetTransparency = hover and 0.2 or 0.3
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(button, tweenInfo, {BackgroundTransparency = targetTransparency})
+    tween:Play()
+end
 
-exitButton.MouseEnter:Connect(function() animateButton(exitButton, true) end) exitButton.MouseLeave:Connect(function() animateButton(exitButton, false) end)
+exitButton.MouseEnter:Connect(function()
+    animateButton(exitButton, true)
+end)
+exitButton.MouseLeave:Connect(function()
+    animateButton(exitButton, false)
+end)
 
-local function removeGui() local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In) local tween = TweenService:Create(mainFrame, tweenInfo, {BackgroundTransparency = 1, Size = UDim2.new(0, 0, 0, 0)}) tween:Play() for \_, child in pairs(mainFrame:GetChildren()) do if child:IsA("GuiObject") then if child:IsA("ImageLabel") then local childTween = TweenService:Create(child, tweenInfo, {ImageTransparency = 1}) childTween:Play() else local childTween = TweenService:Create(child, tweenInfo, {BackgroundTransparency = 1}) childTween:Play() end end end wait(0.5) screenGui:Destroy() end
+local function removeGui()
+    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+    local tween = TweenService:Create(mainFrame, tweenInfo, {BackgroundTransparency = 1, Size = UDim2.new(0, 0, 0, 0)})
+    tween:Play()
+    for _, child in pairs(mainFrame:GetChildren()) do
+        if child:IsA("GuiObject") then
+            if child:IsA("ImageLabel") then
+                local childTween = TweenService:Create(child, tweenInfo, {ImageTransparency = 1})
+                childTween:Play()
+            else
+                local childTween = TweenService:Create(child, tweenInfo, {BackgroundTransparency = 1})
+                childTween:Play()
+            end
+        end
+    end
+    wait(0.5)
+    screenGui:Destroy()
+end
 
 exitButton.Activated:Connect(removeGui)
 
-local dogsOfWarButton local skinwalkersButton local demonstrationScpButton local isToggledDogsOfWar = false local isToggledSkinwalkers = false local isToggledDemonstrationScp = false
+local dogsOfWarButton
+local skinwalkersButton
+local demonstrationScpButton
+local isToggledDogsOfWar = false
+local isToggledSkinwalkers = false
+local isToggledDemonstrationScp = false
 
-\-- Отладка: выводим текущий GameId warn("Current GameId: " .. tostring(game.GameId))
+-- Отладка: выводим текущий GameId
+warn("Current GameId: " .. tostring(game.GameId))
 
-if game.GameId == 5369242581 then warn("Creating Dogs of War button for GameId 5369242581") dogsOfWarButton = Instance.new("TextButton") dogsOfWarButton.Size = UDim2.new(0, 250, 0, 40) dogsOfWarButton.Position = UDim2.new(0, 15, 0, 70) dogsOfWarButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100) dogsOfWarButton.BackgroundTransparency = 0.3 dogsOfWarButton.Text = "Dogs of War" dogsOfWarButton.TextColor3 = Color3.fromRGB(255, 255, 255) dogsOfWarButton.TextSize = 20 dogsOfWarButton.Font = Enum.Font.SourceSansBold dogsOfWarButton.Parent = mainFrame
+if game.GameId == 5369242581 then
+    warn("Creating Dogs of War button for GameId 5369242581")
+    dogsOfWarButton = Instance.new("TextButton")
+    dogsOfWarButton.Size = UDim2.new(0, 250, 0, 40)
+    dogsOfWarButton.Position = UDim2.new(0, 15, 0, 70)
+    dogsOfWarButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    dogsOfWarButton.BackgroundTransparency = 0.3
+    dogsOfWarButton.Text = "Dogs of War"
+    dogsOfWarButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    dogsOfWarButton.TextSize = 20
+    dogsOfWarButton.Font = Enum.Font.SourceSansBold
+    dogsOfWarButton.Parent = mainFrame
 
-```
-local dogsOfWarCorner = Instance.new("UICorner")
-dogsOfWarCorner.CornerRadius = UDim.new(0, 10)
-dogsOfWarCorner.Parent = dogsOfWarButton
+    local dogsOfWarCorner = Instance.new("UICorner")
+    dogsOfWarCorner.CornerRadius = UDim.new(0, 10)
+    dogsOfWarCorner.Parent = dogsOfWarButton
 
-local dogsOfWarStroke = Instance.new("UIStroke")
-dogsOfWarStroke.Thickness = 1
-dogsOfWarStroke.Color = Color3.fromRGB(30, 25, 50)
-dogsOfWarStroke.Transparency = 0.7
-dogsOfWarStroke.Parent = dogsOfWarButton
+    local dogsOfWarStroke = Instance.new("UIStroke")
+    dogsOfWarStroke.Thickness = 1
+    dogsOfWarStroke.Color = Color3.fromRGB(30, 25, 50)
+    dogsOfWarStroke.Transparency = 0.7
+    dogsOfWarStroke.Parent = dogsOfWarButton
 
-dogsOfWarButton.MouseEnter:Connect(function()
-    animateButton(dogsOfWarButton, true)
-end)
-dogsOfWarButton.MouseLeave:Connect(function()
-    animateButton(dogsOfWarButton, false)
-end)
-```
-
-else warn("GameId 5369242581 not matched, Dogs of War button not created") end
-
-if game.GameId == 7355857660 then warn("Creating Skinwalkers button for GameId 7355857660") skinwalkersButton = Instance.new("TextButton") skinwalkersButton.Size = UDim2.new(0, 250, 0, 40) skinwalkersButton.Position = UDim2.new(0, 15, 0, 70) skinwalkersButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100) skinwalkersButton.BackgroundTransparency = 0.3 skinwalkersButton.Text = "Skinwalkers" skinwalkersButton.TextColor3 = Color3.fromRGB(255, 255, 255) skinwalkersButton.TextSize = 20 skinwalkersButton.Font = Enum.Font.SourceSansBold skinwalkersButton.Parent = mainFrame
-
-```
-local skinwalkersCorner = Instance.new("UICorner")
-skinwalkersCorner.CornerRadius = UDim.new(0, 10)
-skinwalkersCorner.Parent = skinwalkersButton
-
-local skinwalkersStroke = Instance.new("UIStroke")
-skinwalkersStroke.Thickness = 1
-skinwalkersStroke.Color = Color3.fromRGB(30, 25, 50)
-skinwalkersStroke.Transparency = 0.7
-skinwalkersStroke.Parent = skinwalkersButton
-
-skinwalkersButton.MouseEnter:Connect(function()
-    animateButton(skinwalkersButton, true)
-end)
-skinwalkersButton.MouseLeave:Connect(function()
-    animateButton(skinwalkersButton, false)
-end)
-```
-
-else warn("GameId 7355857660 not matched, Skinwalkers button not created") end
-
-if game.GameId == 2429681475 then warn("Creating Demonstration Scp button for GameId 2429681475") demonstrationScpButton = Instance.new("TextButton") demonstrationScpButton.Size = UDim2.new(0, 250, 0, 40) demonstrationScpButton.Position = UDim2.new(0, 15, 0, 70) demonstrationScpButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100) demonstrationScpButton.BackgroundTransparency = 0.3 demonstrationScpButton.Text = "Demonstration Scp" demonstrationScpButton.TextColor3 = Color3.fromRGB(255, 255, 255) demonstrationScpButton.TextSize = 20 demonstrationScpButton.Font = Enum.Font.SourceSansBold demonstrationScpButton.Parent = mainFrame
-
-```
-local demonstrationScpCorner = Instance.new("UICorner")
-demonstrationScpCorner.CornerRadius = UDim.new(0, 10)
-demonstrationScpCorner.Parent = demonstrationScpButton
-
-local demonstrationScpStroke = Instance.new("UIStroke")
-demonstrationScpStroke.Thickness = 1
-demonstrationScpStroke.Color = Color3.fromRGB(30, 25, 50)
-demonstrationScpStroke.Transparency = 0.7
-demonstrationScpStroke.Parent = demonstrationScpButton
-
-demonstrationScpButton.MouseEnter:Connect(function()
-    animateButton(demonstrationScpButton, true)
-end)
-demonstrationScpButton.MouseLeave:Connect(function()
-    animateButton(demonstrationScpButton, false)
-end)
-```
-
-else warn("GameId 2429681475 not matched, Demonstration Scp button not created") end
-
-local verticalSeparator = Instance.new("Frame") verticalSeparator.Size = UDim2.new(0, 1, 0, 200) verticalSeparator.Position = UDim2.new(0, 270, 0, 70) verticalSeparator.BackgroundTransparency = 0.5 verticalSeparator.BackgroundColor3 = Color3.fromRGB(100, 100, 255) verticalSeparator.BorderSizePixel = 0 verticalSeparator.Parent = mainFrame
-
-local verticalSeparatorGradient = Instance.new("UIGradient") verticalSeparatorGradient.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 255)), ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 200, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 100, 255)) }) verticalSeparatorGradient.Rotation = 90 verticalSeparatorGradient.Parent = verticalSeparator
-
-local loadButton = Instance.new("TextButton") loadButton.Size = UDim2.new(0, 120, 0, 40) loadButton.Position = UDim2.new(1, -135, 1, -50) loadButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100) loadButton.BackgroundTransparency = 0.3 loadButton.Text = "Load" loadButton.TextColor3 = Color3.fromRGB(255, 255, 255) loadButton.TextSize = 20 loadButton.Font = Enum.Font.SourceSansBold loadButton.Visible = false loadButton.Parent = mainFrame
-
-local loadCorner = Instance.new("UICorner") loadCorner.CornerRadius = UDim.new(0, 10) loadCorner.Parent = loadButton
-
-local loadStroke = Instance.new("UIStroke") loadStroke.Thickness = 1 loadStroke.Color = Color3.fromRGB(30, 25, 50) loadStroke.Transparency = 0.7 loadStroke.Parent = loadButton
-
-loadButton.MouseEnter:Connect(function() animateButton(loadButton, true) end) loadButton.MouseLeave:Connect(function() animateButton(loadButton, false) end)
-
-local changelogFrame = Instance.new("Frame") changelogFrame.Size = UDim2.new(0, 200, 0, 150) changelogFrame.Position = UDim2.new(1, -215, 0, 70) changelogFrame.BackgroundTransparency = 1 changelogFrame.BackgroundColor3 = Color3.fromRGB(40, 35, 60) changelogFrame.Visible = false changelogFrame.Parent = mainFrame
-
-local changelogCorner = Instance.new("UICorner") changelogCorner.CornerRadius = UDim.new(0, 8) changelogCorner.Parent = changelogFrame
-
-local changelogGradient = Instance.new("UIGradient") changelogGradient.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 50, 100)), ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 35, 60)) }) changelogGradient.Parent = changelogFrame
-
-local changelogText = Instance.new("TextLabel") changelogText.Size = UDim2.new(1, -10, 1, -10) changelogText.Position = UDim2.new(0, 5, 0, 5) changelogText.BackgroundTransparency = 1 changelogText.Text = "" changelogText.TextColor3 = Color3.fromRGB(200, 200, 255) changelogText.TextSize = 14 changelogText.Font = Enum.Font.SourceSans changelogText.TextXAlignment = Enum.TextXAlignment.Right changelogText.TextYAlignment = Enum.TextYAlignment.Top changelogText.TextWrapped = true changelogText.Parent = changelogFrame
-
-local function animateAppearance(object) warn("Animating appearance for object: " .. tostring(object.Name)) object.Visible = true object.BackgroundTransparency = 1 -- Жёстко фиксируем размер перед анимацией if object.Name == "Load" then object.Size = UDim2.new(0, 120, 0, 40) elseif object.Name == "changelogFrame" then object.Size = UDim2.new(0, 200, 0, 150) end local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out) local tween = TweenService:Create(object, tweenInfo, {BackgroundTransparency = 0.3}) tween:Play() warn("Finished animating appearance for object: " .. tostring(object.Name) .. ", Size: " .. tostring(object.Size)) end
-
-local function animateDisappearance(object, callback) warn("Animating disappearance for object: " .. tostring(object.Name)) local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In) local tween = TweenService:Create(object, tweenInfo, {BackgroundTransparency = 1}) tween:Play() tween.Completed:Connect(function() object.Visible = false warn("Object " .. tostring(object.Name) .. " is now invisible") if callback then callback() end end) end
-
-local function toggleGameButton(button, toggleState, changelogTextContent) warn("Toggling button: " .. tostring(button.Text) .. ", Current state: " .. tostring(toggleState)) toggleState = not toggleState if toggleState then warn("Showing loadButton and changelogFrame") animateAppearance(loadButton) animateAppearance(changelogFrame) changelogText.Text = changelogTextContent else warn("Hiding loadButton and changelogFrame") animateDisappearance(loadButton) animateDisappearance(changelogFrame) end local strokeTransparency = toggleState and 0.5 or 0.7 local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out) local strokeTween = TweenService:Create(button.UIStroke, tweenInfo, {Transparency = strokeTransparency}) strokeTween:Play() warn("New toggle state for " .. tostring(button.Text) .. ": " .. tostring(toggleState)) return toggleState end
-
-local function loadScript() warn("Load script triggered") local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In) local tween = TweenService:Create(mainFrame, tweenInfo, {BackgroundTransparency = 1, Size = UDim2.new(0, 0, 0, 0)}) tween:Play() for \_, child in pairs(mainFrame:GetChildren()) do if child:IsA("GuiObject") then if child:IsA("ImageLabel") then local childTween = TweenService:Create(child, tweenInfo, {ImageTransparency = 1}) childTween:Play() else local childTween = TweenService:Create(child, tweenInfo, {BackgroundTransparency = 1}) childTween:Play() end end end wait(0.5) screenGui:Destroy()
-
-```
-local scriptUrl
-if isToggledDogsOfWar then
-    scriptUrl = "https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/loader1"
-elseif isToggledSkinwalkers then
-    scriptUrl = "https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/VeryUpSkinwolkers"
-elseif isToggledDemonstrationScp then
-    scriptUrl = "https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/SCP"
+    dogsOfWarButton.MouseEnter:Connect(function()
+        animateButton(dogsOfWarButton, true)
+    end)
+    dogsOfWarButton.MouseLeave:Connect(function()
+        animateButton(dogsOfWarButton, false)
+    end)
+else
+    warn("GameId 5369242581 not matched, Dogs of War button not created")
 end
 
-if scriptUrl then
-    warn("Loading script from URL: " .. scriptUrl)
-    local loaderSuccess, loaderError = pcall(function()
-        local script = loadstring(game:HttpGet(scriptUrl))()
-        if script then
-            if type(script) == "function" then
-                script()
-            elseif type(script) == "table" then
-                local updateLoader, hideLoader = script()
-                if updateLoader and hideLoader then
-                    updateLoader()
-                    hideLoader()
+if game.GameId == 7355857660 then
+    warn("Creating Skinwalkers button for GameId 7355857660")
+    skinwalkersButton = Instance.new("TextButton")
+    skinwalkersButton.Size = UDim2.new(0, 250, 0, 40)
+    skinwalkersButton.Position = UDim2.new(0, 15, 0, 70)
+    skinwalkersButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    skinwalkersButton.BackgroundTransparency = 0.3
+    skinwalkersButton.Text = "Skinwalkers"
+    skinwalkersButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    skinwalkersButton.TextSize = 20
+    skinwalkersButton.Font = Enum.Font.SourceSansBold
+    skinwalkersButton.Parent = mainFrame
+
+    local skinwalkersCorner = Instance.new("UICorner")
+    skinwalkersCorner.CornerRadius = UDim.new(0, 10)
+    skinwalkersCorner.Parent = skinwalkersButton
+
+    local skinwalkersStroke = Instance.new("UIStroke")
+    skinwalkersStroke.Thickness = 1
+    skinwalkersStroke.Color = Color3.fromRGB(30, 25, 50)
+    skinwalkersStroke.Transparency = 0.7
+    skinwalkersStroke.Parent = skinwalkersButton
+
+    skinwalkersButton.MouseEnter:Connect(function()
+        animateButton(skinwalkersButton, true)
+    end)
+    skinwalkersButton.MouseLeave:Connect(function()
+        animateButton(skinwalkersButton, false)
+    end)
+else
+    warn("GameId 7355857660 not matched, Skinwalkers button not created")
+end
+
+if game.GameId == 2429681475 then
+    warn("Creating Demonstration Scp button for GameId 2429681475")
+    demonstrationScpButton = Instance.new("TextButton")
+    demonstrationScpButton.Size = UDim2.new(0, 250, 0, 40)
+    demonstrationScpButton.Position = UDim2.new(0, 15, 0, 70)
+    demonstrationScpButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    demonstrationScpButton.BackgroundTransparency = 0.3
+    demonstrationScpButton.Text = "Demonstration Scp"
+    demonstrationScpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    demonstrationScpButton.TextSize = 20
+    demonstrationScpButton.Font = Enum.Font.SourceSansBold
+    demonstrationScpButton.Parent = mainFrame
+
+    local demonstrationScpCorner = Instance.new("UICorner")
+    demonstrationScpCorner.CornerRadius = UDim.new(0, 10)
+    demonstrationScpCorner.Parent = demonstrationScpButton
+
+    local demonstrationScpStroke = Instance.new("UIStroke")
+    demonstrationScpStroke.Thickness = 1
+    demonstrationScpStroke.Color = Color3.fromRGB(30, 25, 50)
+    demonstrationScpStroke.Transparency = 0.7
+    demonstrationScpStroke.Parent = demonstrationScpButton
+
+    demonstrationScpButton.MouseEnter:Connect(function()
+        animateButton(demonstrationScpButton, true)
+    end)
+    demonstrationScpButton.MouseLeave:Connect(function()
+        animateButton(demonstrationScpButton, false)
+    end)
+else
+    warn("GameId 2429681475 not matched, Demonstration Scp button not created")
+end
+
+local verticalSeparator = Instance.new("Frame")
+verticalSeparator.Size = UDim2.new(0, 1, 0, 200)
+verticalSeparator.Position = UDim2.new(0, 270, 0, 70)
+verticalSeparator.BackgroundTransparency = 0.5
+verticalSeparator.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+verticalSeparator.BorderSizePixel = 0
+verticalSeparator.Parent = mainFrame
+
+local verticalSeparatorGradient = Instance.new("UIGradient")
+verticalSeparatorGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 100, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 200, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 100, 255))
+})
+verticalSeparatorGradient.Rotation = 90
+verticalSeparatorGradient.Parent = verticalSeparator
+
+local loadButton = Instance.new("TextButton")
+loadButton.Size = UDim2.new(0, 120, 0, 40)
+loadButton.Position = UDim2.new(1, -135, 1, -50)
+loadButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+loadButton.BackgroundTransparency = 0.3
+loadButton.Text = "Load"
+loadButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+loadButton.TextSize = 20
+loadButton.Font = Enum.Font.SourceSansBold
+loadButton.Visible = false
+loadButton.Parent = mainFrame
+
+local loadCorner = Instance.new("UICorner")
+loadCorner.CornerRadius = UDim.new(0, 10)
+loadCorner.Parent = loadButton
+
+local loadStroke = Instance.new("UIStroke")
+loadStroke.Thickness = 1
+loadStroke.Color = Color3.fromRGB(30, 25, 50)
+loadStroke.Transparency = 0.7
+loadStroke.Parent = loadButton
+
+loadButton.MouseEnter:Connect(function()
+    animateButton(loadButton, true)
+end)
+loadButton.MouseLeave:Connect(function()
+    animateButton(loadButton, false)
+end)
+
+local changelogFrame = Instance.new("Frame")
+changelogFrame.Size = UDim2.new(0, 200, 0, 150)
+changelogFrame.Position = UDim2.new(1, -215, 0, 70)
+changelogFrame.BackgroundTransparency = 1
+changelogFrame.BackgroundColor3 = Color3.fromRGB(40, 35, 60)
+changelogFrame.Visible = false
+changelogFrame.Parent = mainFrame
+
+local changelogCorner = Instance.new("UICorner")
+changelogCorner.CornerRadius = UDim.new(0, 8)
+changelogCorner.Parent = changelogFrame
+
+local changelogGradient = Instance.new("UIGradient")
+changelogGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 50, 100)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 35, 60))
+})
+changelogGradient.Parent = changelogFrame
+
+local changelogText = Instance.new("TextLabel")
+changelogText.Size = UDim2.new(1, -10, 1, -10)
+changelogText.Position = UDim2.new(0, 5, 0, 5)
+changelogText.BackgroundTransparency = 1
+changelogText.Text = ""
+changelogText.TextColor3 = Color3.fromRGB(200, 200, 255)
+changelogText.TextSize = 14
+changelogText.Font = Enum.Font.SourceSans
+changelogText.TextXAlignment = Enum.TextXAlignment.Right
+changelogText.TextYAlignment = Enum.TextYAlignment.Top
+changelogText.TextWrapped = true
+changelogText.Parent = changelogFrame
+
+local function animateAppearance(object)
+    warn("Animating appearance for object: " .. tostring(object.Name))
+    object.Visible = true
+    object.BackgroundTransparency = 1
+    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(object, tweenInfo, {BackgroundTransparency = 0.3})
+    tween:Play()
+end
+
+local function animateDisappearance(object, callback)
+    warn("Animating disappearance for object: " .. tostring(object.Name))
+    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+    local tween = TweenService:Create(object, tweenInfo, {BackgroundTransparency = 1})
+    tween:Play()
+    tween.Completed:Connect(function()
+        object.Visible = false
+        warn("Object " .. tostring(object.Name) .. " is now invisible")
+        if callback then callback() end
+    end)
+end
+
+local function toggleGameButton(button, toggleState, changelogTextContent)
+    warn("Toggling button: " .. tostring(button.Text) .. ", Current state: " .. tostring(toggleState))
+    toggleState = not toggleState
+    if toggleState then
+        warn("Showing loadButton and changelogFrame")
+        animateAppearance(loadButton)
+        animateAppearance(changelogFrame)
+        changelogText.Text = changelogTextContent
+    else
+        warn("Hiding loadButton and changelogFrame")
+        animateDisappearance(loadButton)
+        animateDisappearance(changelogFrame)
+    end
+    local strokeTransparency = toggleState and 0.5 or 0.7
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local strokeTween = TweenService:Create(button.UIStroke, tweenInfo, {Transparency = strokeTransparency})
+    strokeTween:Play()
+    warn("New toggle state for " .. tostring(button.Text) .. ": " .. tostring(toggleState))
+    return toggleState
+end
+
+local function loadScript()
+    warn("Load script triggered")
+    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+    local tween = TweenService:Create(mainFrame, tweenInfo, {BackgroundTransparency = 1, Size = UDim2.new(0, 0, 0, 0)})
+    tween:Play()
+    for _, child in pairs(mainFrame:GetChildren()) do
+        if child:IsA("GuiObject") then
+            if child:IsA("ImageLabel") then
+                local childTween = TweenService:Create(child, tweenInfo, {ImageTransparency = 1})
+                childTween:Play()
+            else
+                local childTween = TweenService:Create(child, tweenInfo, {BackgroundTransparency = 1})
+                childTween:Play()
+            end
+        end
+    end
+    wait(0.5)
+    screenGui:Destroy()
+
+    local scriptUrl
+    if isToggledDogsOfWar then
+        scriptUrl = "https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/loader1"
+    elseif isToggledSkinwalkers then
+        scriptUrl = "https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/VeryUpSkinwolkers"
+    elseif isToggledDemonstrationScp then
+        scriptUrl = "https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/SCP"
+    end
+
+    if scriptUrl then
+        warn("Loading script from URL: " .. scriptUrl)
+        local loaderSuccess, loaderError = pcall(function()
+            local script = loadstring(game:HttpGet(scriptUrl))()
+            if script then
+                if type(script) == "function" then
+                    script()
+                elseif type(script) == "table" then
+                    local updateLoader, hideLoader = script()
+                    if updateLoader and hideLoader then
+                        updateLoader()
+                        hideLoader()
+                    else
+                        warn("updateLoader or hideLoader is nil")
+                    end
                 else
-                    warn("updateLoader or hideLoader is nil")
+                    warn("Loaded script is not a function or table")
                 end
             else
-                warn("Loaded script is not a function or table")
+                warn("Failed to load script: " .. tostring(loaderError))
             end
-        else
-            warn("Failed to load script: " .. tostring(loaderError))
+        end)
+
+        if not loaderSuccess then
+            warn("Failed to execute script: " .. tostring(loaderError))
+        end
+    else
+        warn("No script URL selected")
+    end
+end
+
+if dogsOfWarButton then
+    dogsOfWarButton.Activated:Connect(function()
+        warn("Dogs of War button clicked")
+        isToggledDogsOfWar = toggleGameButton(dogsOfWarButton, isToggledDogsOfWar, "Last Update: Beta Release 0.1\n- Added ESP\n- Improved UI\n- Next Update: v1.0")
+        if not isToggledDogsOfWar then
+            warn("Reconnecting loadButton.Activated for Dogs of War")
+            loadButton.Activated:Connect(loadScript)
         end
     end)
+end
 
-    if not loaderSuccess then
-        warn("Failed to execute script: " .. tostring(loaderError))
-    end
+if skinwalkersButton then
+    skinwalkersButton.Activated:Connect(function()
+        warn("Skinwalkers button clicked")
+        isToggledSkinwalkers = toggleGameButton(skinwalkersButton, isToggledSkinwalkers, "Last Update: Beta v0.1")
+        if not isToggledSkinwalkers then
+            warn("Reconnecting loadButton.Activated for Skinwalkers")
+            loadButton.Activated:Connect(loadScript)
+        end
+    end)
+end
+
+if demonstrationScpButton then
+    warn("Demonstration Scp button exists, connecting Activated event")
+    demonstrationScpButton.Activated:Connect(function()
+        warn("Demonstration Scp button clicked")
+        isToggledDemonstrationScp = toggleGameButton(demonstrationScpButton, isToggledDemonstrationScp, "Release v 0.1")
+        if not isToggledDemonstrationScp then
+            warn("Reconnecting loadButton.Activated for Demonstration Scp")
+            loadButton.Activated:Connect(loadScript)
+        end
+    end)
 else
-    warn("No script URL selected")
+    warn("Demonstration Scp button does not exist!")
 end
-```
-
-end
-
-if dogsOfWarButton then dogsOfWarButton.Activated:Connect(function() warn("Dogs of War button clicked") isToggledDogsOfWar = toggleGameButton(dogsOfWarButton, isToggledDogsOfWar, "Last Update: Beta Release 0.1\\n- Added ESP\\n- Improved UI\\n- Next Update: v1.0") if not isToggledDogsOfWar then warn("Reconnecting loadButton.Activated for Dogs of War") loadButton.Activated:Connect(loadScript) end end) end
-
-if skinwalkersButton then skinwalkersButton.Activated:Connect(function() warn("Skinwalkers button clicked") isToggledSkinwalkers = toggleGameButton(skinwalkersButton, isToggledSkinwalkers, "Last Update: Beta v0.1") if not isToggledSkinwalkers then warn("Reconnecting loadButton.Activated for Skinwalkers") loadButton.Activated:Connect(loadScript) end end) end
-
-if demonstrationScpButton then warn("Demonstration Scp button exists, connecting Activated event") demonstrationScpButton.Activated:Connect(function() warn("Demonstration Scp button clicked") isToggledDemonstrationScp = toggleGameButton(demonstrationScpButton, isToggledDemonstrationScp, "Release v 0.1") if not isToggledDemonstrationScp then warn("Reconnecting loadButton.Activated for Demonstration Scp") loadButton.Activated:Connect(loadScript) end end) else warn("Demonstration Scp button does not exist!") end
 
 loadButton.Activated:Connect(loadScript)
 
-local currentVersion = "1.0" local versionUrl = "https://raw.githubusercontent.com/sergeytwwwe/VeryUp/main/version.txt"
+local currentVersion = "1.0"
+local versionUrl = "https://raw.githubusercontent.com/sergeytwwwe/VeryUp/main/version.txt"
 
-local function checkForUpdate() local success, response = pcall(function() return game:HttpGet(versionUrl) end) if success then local latestVersion = response:match("%d+%.%d+") if latestVersion and latestVersion \~= currentVersion and latestVersion \~= "" then local updateLabel = Instance.new("TextLabel") updateLabel.Size = UDim2.new(0, 300, 0, 30) updateLabel.Position = UDim2.new(0.5, -150, 0, 50) updateLabel.BackgroundTransparency = 0.5 updateLabel.BackgroundColor3 = Color3.fromRGB(255, 100, 100) updateLabel.Text = "Update Available: v" .. latestVersion .. " (Current: v" .. currentVersion .. ")" updateLabel.TextColor3 = Color3.fromRGB(255, 255, 255) updateLabel.TextSize = 16 updateLabel.Font = Enum.Font.SourceSansBold updateLabel.Parent = mainFrame
+local function checkForUpdate()
+    local success, response = pcall(function()
+        return game:HttpGet(versionUrl)
+    end)
+    if success then
+        local latestVersion = response:match("%d+%.%d+")
+        if latestVersion and latestVersion ~= currentVersion and latestVersion ~= "" then
+            local updateLabel = Instance.new("TextLabel")
+            updateLabel.Size = UDim2.new(0, 300, 0, 30)
+            updateLabel.Position = UDim2.new(0.5, -150, 0, 50)
+            updateLabel.BackgroundTransparency = 0.5
+            updateLabel.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+            updateLabel.Text = "Update Available: v" .. latestVersion .. " (Current: v" .. currentVersion .. ")"
+            updateLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            updateLabel.TextSize = 16
+            updateLabel.Font = Enum.Font.SourceSansBold
+            updateLabel.Parent = mainFrame
 
-```
-        local updateCorner = Instance.new("UICorner")
-        updateCorner.CornerRadius = UDim.new(0, 8)
-        updateCorner.Parent = updateLabel
+            local updateCorner = Instance.new("UICorner")
+            updateCorner.CornerRadius = UDim.new(0, 8)
+            updateCorner.Parent = updateLabel
+        end
+    else
+        warn("Failed to check for injector update: " .. tostring(response))
     end
-else
-    warn("Failed to check for injector update: " .. tostring(response))
-end
-```
-
 end
 
 checkForUpdate()
