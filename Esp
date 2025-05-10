@@ -638,28 +638,6 @@ local function initPlayerESP(services, settings)
         if player == services.LocalPlayer then return end
         player.CharacterAdded:Connect(function(character)
             coroutine.wrap(MainESP)(character, services, settings)
-            -- Модификация оружия для игрока
-            local function modifyWeapon(tool)
-                if tool and tool:FindFirstChild("Settings") then
-                    local settings = require(tool.Settings)
-                    settings.InfiniteAmmo = true -- Бесконечные патроны
-                    settings.RecoilPattern = {{0, 0, 0, 0, 0}} -- Отключение отдачи
-                    settings.BulletMinSpread = 0 -- Отключение минимального разброса
-                    settings.BulletMaxSpread = 0 -- Отключение максимального разброса
-                end
-            end
-            if player.Character then
-                for _, tool in pairs(player.Character:GetChildren()) do
-                    if tool:IsA("Tool") then
-                        modifyWeapon(tool)
-                    end
-                end
-            end
-            player.Character.ChildAdded:Connect(function(child)
-                if child:IsA("Tool") then
-                    modifyWeapon(child)
-                end
-            end)
         end)
     end)
 end
