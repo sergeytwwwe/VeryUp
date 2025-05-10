@@ -1,0 +1,808 @@
+-- init
+if not game:IsLoaded() then 
+    game.Loaded:Wait()
+end
+
+if not syn or not protectgui then
+    getgenv().protectgui = function() end
+end
+
+-- Adonis bypass
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Pixeluted/adoniscries/main/Source.lua"))()
+
+local badFunctions = {"Crash", "HardCrash", "GPUCrash", "RAMCrash", "KillClient", "SetFPS"}
+for i,v in pairs(getgc()) do 
+    if type(v) == "function" then
+        local info = debug.getinfo(v)
+        local functionName = info.name
+        if info.source:find('=.Core.Functions') and table.find(badFunctions, functionName) then
+            hookfunction(v, function()
+            end)
+        end
+    end
+end
+
+-- ReGui
+local InsertService = game:GetService("InsertService")
+local ReGui = loadstring(game:HttpGet('https://raw.githubusercontent.com/depthso/Dear-ReGui/refs/heads/main/ReGui.lua'))()
+local PrefabsId = "rbxassetid://" .. ReGui.PrefabsId
+
+-- Инициализация ReGui
+ReGui:Init({
+    Prefabs = InsertService:LoadLocalAsset(PrefabsId)
+})
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+local GetPlayers = Players.GetPlayers
+local WorldToScreen = Camera.WorldToScreenPoint
+local WorldToViewportPoint = Camera.WorldToViewportPoint
+local GetPartsObscuringTarget = Camera.GetPartsObscuringTarget
+local FindFirstChild = game.FindFirstChild
+local RenderStepped = RunService.RenderStepped
+local GetMouseLocation = UserInputService.GetMouseLocation
+
+local resume = coroutine.resume 
+local create = coroutine.create
+
+-- Team Relations
+local TeamRelations = {
+    ["Class D"] = { Allies = {"Chaos Insurgency"}, Enemies = {"Mobile Task Force", "Scientist", "SCP"} },
+    ["Chaos Insurgency"] = { Allies = {"Class D"}, Enemies = {"Mobile Task Force", "Scientist", "SCP"} },
+    ["Scientist"] = { Allies = {"Mobile Task Force"}, Enemies = {"Class D", "Chaos Insurgency", "SCP"} },
+    ["Mobile Task Force"] = { Allies = {"Scientist"}, Enemies = {"Class D", "Chaos Insurgency", "SCP"} },
+    ["SCP"] = { Allies = {}, Enemies = {"Class D", "Chaos Insurgency", "Mobile Task Force", "Scientist"} }
+}
+
+-- Функция получения роли игрока
+local function getPlayerRole(player)
+    if not player then return "Unknown" end
+    local team = player.Team
+    return team and team.Name or "Unknown"
+end
+
+-- Окно с вкладками
+local TabsWindow = ReGui:TabsWindow({
+    Title = "ESP Loader",
+    Size = UDim2.fromOffset(400, 400)
+}):Center()
+
+-- Вкладка Visual
+local VisualTab = TabsWindow:CreateTab({Name = "Visual"})
+local VisualContent = VisualTab:ScrollingCanvas({Fill = true})
+
+-- Загрузка ESP
+local espSuccess, espFuncOrError = pcall(function()
+    return loadstring(game:HttpGet('https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/Esp'))()
+end)
+if espSuccess and typeof(espFuncOrError) == "function" then
+    local services = {Players = Players, RunService = RunService, Workspace = Workspace, LocalPlayer = LocalPlayer, Camera = Camera}
+    local success, err = pcall(function() espFuncOrError(VisualContent, services) end)
+    if not success then warn("Failed to initialize ESP: " .. err) else print("ESP loaded successfully") end
+else
+    warn("Failed to load ESP: " .. (espFuncOrError or "Unknown error"))
+end
+
+-- Вкладка Combat
+local CombatTab = TabsWindow:CreateTab({Name = "Combat"})
+local CombatContent = CombatTab:ScrollingCanvas({Fill = true})
+
+-- Вкладка Misc
+local MiscTab = TabsWindow:CreateTab({Name = "Misc"})
+local MiscContent = MiscTab:ScrollingCanvas({Fill = true})
+
+-- Noclip
+local noclipEnabled = false
+local steppedConnection = nil
+
+local function applyNoclip(character)
+    if not character then return end
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = not noclipEnabled
+        end
+    end
+end
+
+local function restoreCollisions(character)
+    if not character then return end
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
+        end
+    end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end
+
+local function enableNoclip()
+    if steppedConnection then
+        steppedConnection:Disconnect()
+        steppedConnection = nil
+    end
+    noclipEnabled = true
+
+    local char = LocalPlayer.Character
+    if not char then return end
+
+    applyNoclip(char)
+
+    steppedConnection = RunService.Stepped:Connect(function()
+        if not char or not char.Parent then
+            char = LocalPlayer.Character
+            if not char or not char.Parent then return end
+            applyNoclip(char)
+        end
+
+        applyNoclip(char)
+
+        if not noclipEnabled then
+            restoreCollisions(char)
+            steppedConnection:Disconnect()
+            steppedConnection = nil
+        end
+    end)
+end
+
+local function disableNoclip()
+    noclipEnabled = false
+end
+
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    if noclipEnabled then
+        applyNoclip(newChar)
+    else
+        restoreCollisions(newChar)
+    end
+end)
+
+-- Walkspeed настройки
+local WalkspeedSettings = {
+    Enabled = false,
+    Speed = 16,
+    Bind = Enum.KeyCode.J,
+    Mode = "Switch",
+    IsKeyHeld = false
+}
+
+local function setWalkspeed(speed)
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.WalkSpeed = speed
+    end
+end
+
+local function resetOnDeath()
+    if LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            if WalkspeedSettings.Enabled or (WalkspeedSettings.Mode == "Retention" and WalkspeedSettings.IsKeyHeld) then
+                hum.WalkSpeed = WalkspeedSettings.Speed
+            end
+        end
+        if noclipEnabled then
+            enableNoclip()
+        else
+            disableNoclip()
+        end
+    end
+end
+LocalPlayer.CharacterAdded:Connect(resetOnDeath)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == WalkspeedSettings.Bind then
+        if WalkspeedSettings.Mode == "Switch" then
+            WalkspeedSettings.Enabled = not WalkspeedSettings.Enabled
+            if WalkspeedSettings.Enabled then
+                setWalkspeed(WalkspeedSettings.Speed)
+            end
+        elseif WalkspeedSettings.Mode == "Retention" then
+            WalkspeedSettings.IsKeyHeld = true
+            setWalkspeed(WalkspeedSettings.Speed)
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == WalkspeedSettings.Bind and WalkspeedSettings.Mode == "Retention" then
+        WalkspeedSettings.IsKeyHeld = false
+    end
+end)
+
+resume(create(function()
+    RenderStepped:Connect(function()
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            if WalkspeedSettings.Enabled or (WalkspeedSettings.Mode == "Retention" and WalkspeedSettings.IsKeyHeld) then
+                setWalkspeed(WalkspeedSettings.Speed)
+            end
+        end
+    end)
+end))
+
+-- Silent Aim Section
+local SilentAimSettings = {
+    Enabled = false,
+    Mode = "Switch",
+    UseFOV = false,
+    VisFOV = false,
+    ShowTarget = false,
+    WallCheck = false,
+    TeamCheck = false,
+    FOVRadius = 360,
+    TargetPart = "Head",
+    SilentAimMethod = "Raycast",
+    IsKeyHeld = false,
+    Bind = Enum.KeyCode.T,
+    CurrentTarget = nil
+}
+
+-- Aimbot Section
+local AimbotSettings = {
+    Enabled = false,
+    Mode = "Switch",
+    UseFOV = false,
+    VisFOV = false,
+    WallCheck = false,
+    TeamCheck = false,
+    FOVRadius = 360,
+    TargetPart = "Head",
+    Smoothness = 0.2,
+    IsKeyHeld = false,
+    Bind = Enum.KeyCode.E,
+    CurrentTarget = nil
+}
+
+-- Drawing
+local silent_fov_circle = Drawing.new("Circle")
+silent_fov_circle.Thickness = 1
+silent_fov_circle.NumSides = 1000
+silent_fov_circle.Radius = SilentAimSettings.FOVRadius
+silent_fov_circle.Filled = false
+silent_fov_circle.Visible = false
+silent_fov_circle.ZIndex = 999
+silent_fov_circle.Transparency = 1
+silent_fov_circle.Color = Color3.fromRGB(255, 255, 255)
+
+local aimbot_fov_circle = Drawing.new("Circle")
+aimbot_fov_circle.Thickness = 1
+aimbot_fov_circle.NumSides = 1000
+aimbot_fov_circle.Radius = AimbotSettings.FOVRadius
+aimbot_fov_circle.Filled = false
+aimbot_fov_circle.Visible = false
+aimbot_fov_circle.ZIndex = 999
+aimbot_fov_circle.Transparency = 1
+aimbot_fov_circle.Color = Color3.fromRGB(255, 255, 255)
+
+local target_box = Drawing.new("Square")
+target_box.Visible = false
+target_box.ZIndex = 999
+target_box.Color = Color3.fromRGB(255, 255, 255)
+target_box.Thickness = 4
+target_box.Size = Vector2.new(10, 10)
+target_box.Filled = false
+target_box.CornerRadius = 0.3
+target_box.Transparency = 1
+
+-- Notifications
+local showNotification
+local notifSuccess, notifError = pcall(function()
+    showNotification = loadstring(game:HttpGet("https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/VeryUpNotifications"))()
+end)
+if not notifSuccess then
+    warn("Failed to load VeryUpNotifications: " .. notifError)
+    showNotification = function(message, isError)
+        if isError then
+            warn("[Notification] " .. message)
+        else
+            print("[Notification] " .. message)
+        end
+    end
+end
+
+-- Functions
+local function getPositionOnScreen(Vector)
+    local Vec3, OnScreen = WorldToScreen(Camera, Vector)
+    return Vector2.new(Vec3.X, Vec3.Y), OnScreen
+end
+
+local function getDirection(Origin, Position)
+    return (Position - Origin).Unit * 1000
+end
+
+local function getMousePosition()
+    return GetMouseLocation(UserInputService)
+end
+
+local function IsPlayerVisible(Player, settings)
+    local PlayerCharacter = Player.Character
+    local LocalPlayerCharacter = LocalPlayer.Character
+    if not (PlayerCharacter and LocalPlayerCharacter) then return false end 
+    local TargetPart = FindFirstChild(PlayerCharacter, settings.TargetPart)
+    if not TargetPart then TargetPart = FindFirstChild(PlayerCharacter, "HumanoidRootPart") end
+    if not TargetPart then return false end 
+    local CastPoints = {TargetPart.Position}
+    local IgnoreList = {LocalPlayerCharacter, PlayerCharacter}
+    local ObscuringObjects = #GetPartsObscuringTarget(Camera, CastPoints, IgnoreList)
+    return ObscuringObjects == 0
+end
+
+local function getClosestPlayer(settings)
+    local Closest
+    local DistanceToMouse = math.huge
+    for _, Player in next, GetPlayers(Players) do
+        if Player == LocalPlayer then continue end
+        local Character = Player.Character
+        if not Character then continue end
+        if settings.TeamCheck then
+            local LocalTeam = getPlayerRole(LocalPlayer)
+            local PlayerTeam = getPlayerRole(Player)
+            if LocalTeam == "Unknown" or PlayerTeam == "Unknown" then continue end
+            local Relations = TeamRelations[LocalTeam]
+            if Relations and (table.find(Relations.Allies, PlayerTeam) or LocalTeam == PlayerTeam) then continue end
+        end
+        if settings.WallCheck and not IsPlayerVisible(Player, settings) then continue end
+        local TargetPart = FindFirstChild(Character, settings.TargetPart)
+        if not TargetPart then TargetPart = FindFirstChild(Character, "HumanoidRootPart") end
+        local Humanoid = FindFirstChild(Character, "Humanoid")
+        if not TargetPart or not Humanoid or Humanoid and Humanoid.Health <= 0 then continue end
+        local ScreenPosition, OnScreen = getPositionOnScreen(TargetPart.Position)
+        if not OnScreen then continue end
+        local Distance = (getMousePosition() - ScreenPosition).Magnitude
+        if Distance <= (settings.FOVRadius or math.huge) and Distance < DistanceToMouse then
+            Closest = TargetPart
+            DistanceToMouse = Distance
+            settings.CurrentTarget = Player
+        end
+    end
+    return Closest
+end
+
+local ExpectedArguments = {
+    Raycast = {
+        ArgCountRequired = 3,
+        Args = {
+            "Instance", "Vector3", "Vector3", "RaycastParams"
+        }
+    }
+}
+
+local function ValidateArguments(Args, RayMethod)
+    local Matches = 0
+    if #Args < RayMethod.ArgCountRequired then
+        return false
+    end
+    for Pos, Argument in next, Args do
+        if typeof(Argument) == RayMethod.Args[Pos] then
+            Matches = Matches + 1
+        end
+    end
+    return Matches >= RayMethod.ArgCountRequired
+end
+
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
+    local Method = getnamecallmethod()
+    local Arguments = {...}
+    local self = Arguments[1]
+    local isActive = SilentAimSettings.Enabled or (SilentAimSettings.Mode == "Retention" and SilentAimSettings.IsKeyHeld)
+    if isActive and self == Workspace and not checkcaller() then
+        if Method == "Raycast" and SilentAimSettings.SilentAimMethod == "Raycast" then
+            if ValidateArguments(Arguments, ExpectedArguments.Raycast) then
+                local A_Origin = Arguments[2]
+                local HitPart = getClosestPlayer(SilentAimSettings)
+                if HitPart then
+                    Arguments[3] = getDirection(A_Origin, HitPart.Position)
+                    return oldNamecall(unpack(Arguments))
+                end
+            end
+        end
+    end
+    return oldNamecall(...)
+end))
+
+local targetAlpha = 0
+local silentColorTransition = 0
+local aimbotColorTransition = 0
+resume(create(function()
+    RenderStepped:Connect(function()
+        silent_fov_circle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        silent_fov_circle.Radius = SilentAimSettings.FOVRadius
+        silent_fov_circle.Visible = SilentAimSettings.VisFOV and (SilentAimSettings.Enabled or SilentAimSettings.IsKeyHeld)
+        local ClosestSilent = getClosestPlayer(SilentAimSettings)
+        if (SilentAimSettings.Enabled or SilentAimSettings.IsKeyHeld) and ClosestSilent then
+            silentColorTransition = math.min(silentColorTransition + 0.05, 1)
+        else
+            silentColorTransition = math.max(silentColorTransition - 0.05, 0)
+        end
+        local sr = 255 - (silentColorTransition * 255)
+        local sg = 255 - (silentColorTransition * 255)
+        local sb = 255 - (silentColorTransition * 255)
+        silent_fov_circle.Color = Color3.fromRGB(sr, sg, sb)
+
+        aimbot_fov_circle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        aimbot_fov_circle.Radius = AimbotSettings.FOVRadius
+        aimbot_fov_circle.Visible = AimbotSettings.VisFOV and (AimbotSettings.Enabled or AimbotSettings.IsKeyHeld)
+        local ClosestAimbot = getClosestPlayer(AimbotSettings)
+        if (AimbotSettings.Enabled or AimbotSettings.IsKeyHeld) and ClosestAimbot then
+            aimbotColorTransition = math.min(aimbotColorTransition + 0.05, 1)
+        else
+            aimbotColorTransition = math.max(aimbotColorTransition - 0.05, 0)
+        end
+        local ar = 255 - (aimbotColorTransition * 255)
+        local ag = 255 - (aimbotColorTransition * 0)
+        local ab = 255 - (aimbotColorTransition * 255)
+        aimbot_fov_circle.Color = Color3.fromRGB(ar, ag, ab)
+
+        if (AimbotSettings.Enabled or (AimbotSettings.Mode == "Retention" and AimbotSettings.IsKeyHeld)) and ClosestAimbot then
+            local target = ClosestAimbot
+            if target then
+                local targetPart = target
+                local targetPos = targetPart.Position
+                local cameraPos = Camera.CFrame.Position
+                local direction = (targetPos - cameraPos).Unit
+                local targetCFrame = CFrame.new(cameraPos, cameraPos + direction)
+                Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, AimbotSettings.Smoothness)
+            end
+        end
+
+        if SilentAimSettings.ShowTarget and (SilentAimSettings.Enabled or SilentAimSettings.IsKeyHeld) then
+            if ClosestSilent then
+                local TargetPart = FindFirstChild(ClosestSilent.Parent, SilentAimSettings.TargetPart)
+                if not TargetPart then TargetPart = FindFirstChild(ClosestSilent.Parent, "HumanoidRootPart") end
+                local RootToViewportPoint, IsOnScreen = WorldToViewportPoint(Camera, TargetPart.Position)
+                if IsOnScreen then
+                    local Distance = (Camera.CFrame.Position - TargetPart.Position).Magnitude
+                    local BaseSize = 10
+                    local Size = math.max(BaseSize * (50 / math.max(Distance, 1)), 5)
+                    target_box.Size = Vector2.new(Size, Size)
+                    targetAlpha = 1
+                    target_box.Visible = true
+                    target_box.Position = Vector2.new(RootToViewportPoint.X, RootToViewportPoint.Y) - Vector2.new(Size / 2, Size / 2)
+                else
+                    targetAlpha = 0
+                    target_box.Visible = false
+                end
+            else
+                targetAlpha = 0
+                target_box.Visible = false
+            end
+        else
+            targetAlpha = 0
+            target_box.Visible = false
+        end
+    end)
+end))
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == SilentAimSettings.Bind then
+        if SilentAimSettings.Mode == "Switch" then
+            SilentAimSettings.Enabled = not SilentAimSettings.Enabled
+            SilentAimSettings.IsKeyHeld = false
+            if SilentAimSettings.Enabled and AimbotSettings.Enabled then
+                showNotification("Aimbot is currently active!", true)
+                AimbotSettings.Enabled = false
+                AimbotEnableCheckbox:SetValue(false)
+            end
+        elseif SilentAimSettings.Mode == "Retention" then
+            SilentAimSettings.IsKeyHeld = true
+            SilentAimSettings.Enabled = false
+        end
+    elseif input.KeyCode == AimbotSettings.Bind then
+        if AimbotSettings.Mode == "Switch" then
+            AimbotSettings.Enabled = not AimbotSettings.Enabled
+            AimbotSettings.IsKeyHeld = false
+            if AimbotSettings.Enabled and SilentAimSettings.Enabled then
+                showNotification("Silent Aim is currently active!", true)
+                SilentAimSettings.Enabled = false
+                SilentAimEnableCheckbox:SetValue(false)
+            end
+        elseif AimbotSettings.Mode == "Retention" then
+            AimbotSettings.IsKeyHeld = true
+            AimbotSettings.Enabled = false
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == SilentAimSettings.Bind and SilentAimSettings.Mode == "Retention" then
+        SilentAimSettings.IsKeyHeld = false
+    elseif input.KeyCode == AimbotSettings.Bind and AimbotSettings.Mode == "Retention" then
+        AimbotSettings.IsKeyHeld = false
+    end
+end)
+
+local SilentAimHeader = CombatContent:CollapsingHeader({Title = "Silent Aim"})
+local SilentAimEnableCheckbox = SilentAimHeader:Checkbox({
+    IniFlag = "SilentAimEnabled",
+    Label = "Silent Aim Enable",
+    Value = SilentAimSettings.Enabled,
+    Callback = function(self, value)
+        if value and AimbotSettings.Enabled then
+            showNotification("Aimbot is currently active!", true)
+            AimbotSettings.Enabled = false
+            self:SetValue(false)
+            return
+        end
+        SilentAimSettings.Enabled = value
+        SilentAimSettings.IsKeyHeld = false
+    end
+})
+
+SilentAimHeader:Combo({
+    IniFlag = "SilentAimMode",
+    Label = "Mode",
+    Selected = SilentAimSettings.Mode,
+    Items = {"Switch", "Retention"},
+    Callback = function(self, value)
+        SilentAimSettings.Mode = value
+        SilentAimSettings.Enabled = false
+        SilentAimSettings.IsKeyHeld = false
+    end
+})
+
+SilentAimHeader:Checkbox({
+    IniFlag = "UseFOV",
+    Label = "Use FOV",
+    Value = SilentAimSettings.UseFOV,
+    Callback = function(self, value)
+        SilentAimSettings.UseFOV = value
+    end
+})
+
+SilentAimHeader:Checkbox({
+    IniFlag = "VisFOV",
+    Label = "Vis FOV",
+    Value = SilentAimSettings.VisFOV,
+    Callback = function(self, value)
+        SilentAimSettings.VisFOV = value
+    end
+})
+
+SilentAimHeader:SliderInt({
+    IniFlag = "FOVRadius",
+    Label = "FOV Size",
+    Value = SilentAimSettings.FOVRadius,
+    Minimum = 0,
+    Maximum = 360,
+    Callback = function(self, value)
+        SilentAimSettings.FOVRadius = value
+    end
+})
+
+SilentAimHeader:Checkbox({
+    IniFlag = "ShowTarget",
+    Label = "Show Target",
+    Value = SilentAimSettings.ShowTarget,
+    Callback = function(self, value)
+        SilentAimSettings.ShowTarget = value
+    end
+})
+
+SilentAimHeader:Checkbox({
+    IniFlag = "WallCheck",
+    Label = "Wall Check",
+    Value = SilentAimSettings.WallCheck,
+    Callback = function(self, value)
+        SilentAimSettings.WallCheck = value
+    end
+})
+
+SilentAimHeader:Checkbox({
+    IniFlag = "TeamCheck",
+    Label = "Team Check",
+    Value = SilentAimSettings.TeamCheck,
+    Callback = function(self, value)
+        SilentAimSettings.TeamCheck = value
+    end
+})
+
+SilentAimHeader:Keybind({
+    IniFlag = "SilentAimBind",
+    Label = "Bind",
+    Value = SilentAimSettings.Bind,
+    Callback = function(self, value)
+        if value == AimbotSettings.Bind then
+            showNotification("This bind is already used by Aimbot!", true)
+            self:SetValue(SilentAimSettings.Bind)
+            return
+        end
+        SilentAimSettings.Bind = value
+    end
+})
+
+SilentAimHeader:Combo({
+    IniFlag = "TargetPart",
+    Label = "Target Part",
+    Selected = SilentAimSettings.TargetPart,
+    Items = {"Head", "HumanoidRootPart"},
+    Callback = function(self, value)
+        SilentAimSettings.TargetPart = value
+    end
+})
+
+local AimbotHeader = CombatContent:CollapsingHeader({Title = "Aimbot"})
+local AimbotEnableCheckbox = AimbotHeader:Checkbox({
+    IniFlag = "AimbotEnabled",
+    Label = "Aimbot Enable",
+    Value = AimbotSettings.Enabled,
+    Callback = function(self, value)
+        if value and SilentAimSettings.Enabled then
+            showNotification("Silent Aim is currently active!", true)
+            SilentAimSettings.Enabled = false
+            SilentAimEnableCheckbox:SetValue(false)
+            return
+        end
+        AimbotSettings.Enabled = value
+        AimbotSettings.IsKeyHeld = false
+    end
+})
+
+AimbotHeader:Combo({
+    IniFlag = "AimbotMode",
+    Label = "Mode",
+    Selected = AimbotSettings.Mode,
+    Items = {"Switch", "Retention"},
+    Callback = function(self, value)
+        AimbotSettings.Mode = value
+        AimbotSettings.Enabled = false
+        AimbotSettings.IsKeyHeld = false
+    end
+})
+
+AimbotHeader:Checkbox({
+    IniFlag = "UseFOV",
+    Label = "Use FOV",
+    Value = AimbotSettings.UseFOV,
+    Callback = function(self, value)
+        AimbotSettings.UseFOV = value
+    end
+})
+
+AimbotHeader:Checkbox({
+    IniFlag = "VisFOV",
+    Label = "Vis FOV",
+    Value = AimbotSettings.VisFOV,
+    Callback = function(self, value)
+        AimbotSettings.VisFOV = value
+    end
+})
+
+AimbotHeader:SliderInt({
+    IniFlag = "FOVRadius",
+    Label = "FOV Size",
+    Value = AimbotSettings.FOVRadius,
+    Minimum = 0,
+    Maximum = 360,
+    Callback = function(self, value)
+        AimbotSettings.FOVRadius = value
+    end
+})
+
+AimbotHeader:Checkbox({
+    IniFlag = "WallCheck",
+    Label = "Wall Check",
+    Value = AimbotSettings.WallCheck,
+    Callback = function(self, value)
+        AimbotSettings.WallCheck = value
+    end
+})
+
+AimbotHeader:Checkbox({
+    IniFlag = "TeamCheck",
+    Label = "Team Check",
+    Value = AimbotSettings.TeamCheck,
+    Callback = function(self, value)
+        AimbotSettings.TeamCheck = value
+    end
+})
+
+AimbotHeader:Keybind({
+    IniFlag = "AimbotBind",
+    Label = "Bind",
+    Value = AimbotSettings.Bind,
+    Callback = function(self, value)
+        if value == SilentAimSettings.Bind then
+            showNotification("This bind is already used by Silent Aim!", true)
+            self:SetValue(AimbotSettings.Bind)
+            return
+        end
+        AimbotSettings.Bind = value
+    end
+})
+
+AimbotHeader:Combo({
+    IniFlag = "TargetPart",
+    Label = "Target Part",
+    Selected = AimbotSettings.TargetPart,
+    Items = {"Head", "HumanoidRootPart"},
+    Callback = function(self, value)
+        AimbotSettings.TargetPart = value
+    end
+})
+
+AimbotHeader:SliderFloat({
+    IniFlag = "Smoothness",
+    Label = "Smoothness",
+    Value = AimbotSettings.Smoothness,
+    Minimum = 0,
+    Maximum = 1,
+    Callback = function(self, value)
+        AimbotSettings.Smoothness = value
+    end
+})
+
+local MiscHeader = MiscContent:CollapsingHeader({Title = "Movement"})
+local NoclipEnableCheckbox = MiscHeader:Checkbox({
+    IniFlag = "NoclipEnabled",
+    Label = "Noclip Enable",
+    Value = noclipEnabled,
+    Callback = function(self, value)
+        if value then
+            enableNoclip()
+        else
+            disableNoclip()
+        end
+    end
+})
+
+local WalkspeedEnableCheckbox = MiscHeader:Checkbox({
+    IniFlag = "WalkspeedEnabled",
+    Label = "Walkspeed Enable",
+    Value = WalkspeedSettings.Enabled,
+    Callback = function(self, value)
+        WalkspeedSettings.Enabled = value
+        if value then setWalkspeed(WalkspeedSettings.Speed) end
+    end
+})
+
+MiscHeader:Combo({
+    IniFlag = "WalkspeedMode",
+    Label = "Mode",
+    Selected = WalkspeedSettings.Mode,
+    Items = {"Switch", "Retention"},
+    Callback = function(self, value)
+        WalkspeedSettings.Mode = value
+    end
+})
+
+MiscHeader:Keybind({
+    IniFlag = "WalkspeedBind",
+    Label = "Bind",
+    Value = WalkspeedSettings.Bind,
+    Callback = function(self, value)
+        if value == SilentAimSettings.Bind or value == AimbotSettings.Bind then
+            showNotification("This bind is already used!", true)
+            self:SetValue(WalkspeedSettings.Bind)
+            return
+        end
+        WalkspeedSettings.Bind = value
+    end
+})
+
+MiscHeader:SliderInt({
+    IniFlag = "WalkspeedSpeed",
+    Label = "Speed",
+    Value = WalkspeedSettings.Speed,
+    Minimum = 1,
+    Maximum = 100,
+    Callback = function(self, value)
+        WalkspeedSettings.Speed = value
+        if WalkspeedSettings.Enabled or (WalkspeedSettings.Mode == "Retention" and WalkspeedSettings.IsKeyHeld) then
+            setWalkspeed(value)
+        end
+    end
+})
