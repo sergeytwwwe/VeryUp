@@ -201,8 +201,8 @@ local function MainESP(model, services, settings)
             local BR = Vector2.new(centerX + width / 2, bottomScreen.Y)
 
             local boxColor = getRoleColor(player)
-            local thickness = math.clamp(1 / (distance * 0.01), 1, 3) -- Ограничение толщины линий
-            local offset = math.clamp(height * 0.2, 5, 15) -- Ограничение длины углов
+            local thickness = math.clamp(2 / (distance * 0.01), 1, 3) -- Фиксированная толщина с ограничением
+            local offset = math.clamp(10 * (services.Camera.ViewportSize.Y / 1080), 5, 15) -- Масштабируемый offset
 
             if settings.Box then
                 if settings.BoxStyle == "Default" then
@@ -442,7 +442,7 @@ local function MainItemESP(item, services, settings)
             local BR = Vector2.new(pos.X + boxWidth / 2, pos.Y + boxOffsetY)
 
             local thickness = math.clamp(1 / (distance * 0.01), 1, 3)
-            local offset = math.clamp(boxHeight * 0.2, 5, 15)
+            local offset = math.clamp(10 * (services.Camera.ViewportSize.Y / 1080), 5, 15)
 
             if settings.ItemESP.Box then
                 if settings.ItemESP.BoxStyle == "Default" then
