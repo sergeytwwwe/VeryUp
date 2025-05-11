@@ -388,7 +388,7 @@ local function MainItemESP(item, services, settings)
         Left = NewLine(Color3.fromRGB(255, 255, 255), 2),
         Right = NewLine(Color3.fromRGB(255, 255, 255), 2),
         TL1 = NewLine(Color3.fromRGB(255, 255, 255), 2),
-        TL2 = NewLine(Color3.fromRGB(255, 255, 252),
+        TL2 = NewLine(Color3.fromRGB(255, 255, 255), 2),
         TR1 = NewLine(Color3.fromRGB(255, 255, 255), 2),
         TR2 = NewLine(Color3.fromRGB(255, 255, 255), 2),
         BL1 = NewLine(Color3.fromRGB(255, 255, 255), 2),
