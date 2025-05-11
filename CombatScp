@@ -132,26 +132,29 @@ local function getMousePosition()
     return GetMouseLocation(UserInputService)
 end
 
-local function IsPlayerVisible(Player, settings)
+-- Wall Check из Wallcheck.txt
+local function checkWall(Player, settings)
     local PlayerCharacter = Player.Character
     local LocalPlayerCharacter = LocalPlayer.Character
-    if not (PlayerCharacter and LocalPlayerCharacter) then return false end
-    local TargetPart = PlayerCharacter:FindFirstChild(settings.TargetPart)
-    if not TargetPart then TargetPart = PlayerCharacter:FindFirstChild("HumanoidRootPart") end
-    if not TargetPart then return false end
+    if not (PlayerCharacter and LocalPlayerCharacter) then return true end
+
+    local targetHead = PlayerCharacter:FindFirstChild(settings.TargetPart)
+    if not targetHead then targetHead = PlayerCharacter:FindFirstChild("HumanoidRootPart") end
+    if not targetHead then return true end
 
     local origin = Camera.CFrame.Position
-    local direction = (TargetPart.Position - origin).Unit * (TargetPart.Position - origin).Magnitude
+    local direction = (targetHead.Position - origin).Unit * (targetHead.Position - origin).Magnitude
     local raycastParams = RaycastParams.new()
     raycastParams.FilterDescendantsInstances = {LocalPlayerCharacter, PlayerCharacter}
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
 
     local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
-    return not (raycastResult and raycastResult.Instance and raycastResult.Instance.CanCollide)
+    return raycastResult and raycastResult.Instance ~= nil
 end
 
+-- getClosestPlayer из scp.txt
 local function getClosestPlayer(settings)
-    local Closest = nil
+    local Closest
     local DistanceToMouse = math.huge
     for _, Player in next, GetPlayers(Players) do
         if Player == LocalPlayer then continue end
@@ -164,10 +167,10 @@ local function getClosestPlayer(settings)
             local Relations = TeamRelations[LocalTeam]
             if Relations and (table.find(Relations.Allies, PlayerTeam) or LocalTeam == PlayerTeam) then continue end
         end
-        if settings.WallCheck and not IsPlayerVisible(Player, settings) then continue end
-        local TargetPart = Character:FindFirstChild(settings.TargetPart)
-        if not TargetPart then TargetPart = Character:FindFirstChild("HumanoidRootPart") end
-        local Humanoid = Character:FindFirstChild("Humanoid")
+        if settings.WallCheck and checkWall(Player, settings) then continue end
+        local TargetPart = FindFirstChild(Character, settings.TargetPart)
+        if not TargetPart then TargetPart = FindFirstChild(Character, "HumanoidRootPart") end
+        local Humanoid = FindFirstChild(Character, "Humanoid")
         if not TargetPart or not Humanoid or Humanoid and Humanoid.Health <= 0 then continue end
         local ScreenPosition, OnScreen = getPositionOnScreen(TargetPart.Position)
         if not OnScreen then continue end
@@ -181,6 +184,7 @@ local function getClosestPlayer(settings)
     return Closest
 end
 
+-- Silent Aim из scp.txt
 local ExpectedArguments = {
     Raycast = {
         ArgCountRequired = 3,
@@ -271,23 +275,17 @@ resume(create(function()
 
         if SilentAimSettings.ShowTarget and (SilentAimSettings.Enabled or SilentAimSettings.IsKeyHeld) then
             if ClosestSilent then
-                local isVisible = not SilentAimSettings.WallCheck or IsPlayerVisible(SilentAimSettings.CurrentTarget, SilentAimSettings)
-                if isVisible then
-                    local TargetPart = ClosestSilent.Parent:FindFirstChild(SilentAimSettings.TargetPart)
-                    if not TargetPart then TargetPart = ClosestSilent.Parent:FindFirstChild("HumanoidRootPart") end
-                    local RootToViewportPoint, IsOnScreen = WorldToViewportPoint(Camera, TargetPart.Position)
-                    if IsOnScreen then
-                        local Distance = (Camera.CFrame.Position - TargetPart.Position).Magnitude
-                        local BaseSize = 10
-                        local Size = math.max(BaseSize * (50 / math.max(Distance, 1)), 5)
-                        target_box.Size = Vector2.new(Size, Size)
-                        targetAlpha = 1
-                        target_box.Visible = true
-                        target_box.Position = Vector2.new(RootToViewportPoint.X, RootToViewportPoint.Y) - Vector2.new(Size / 2, Size / 2)
-                    else
-                        targetAlpha = 0
-                        target_box.Visible = false
-                    end
+                local TargetPart = FindFirstChild(ClosestSilent.Parent, SilentAimSettings.TargetPart)
+                if not TargetPart then TargetPart = FindFirstChild(ClosestSilent.Parent, "HumanoidRootPart") end
+                local RootToViewportPoint, IsOnScreen = WorldToViewportPoint(Camera, TargetPart.Position)
+                if IsOnScreen then
+                    local Distance = (Camera.CFrame.Position - TargetPart.Position).Magnitude
+                    local BaseSize = 10
+                    local Size = math.max(BaseSize * (50 / math.max(Distance, 1)), 5)
+                    target_box.Size = Vector2.new(Size, Size)
+                    targetAlpha = 1
+                    target_box.Visible = true
+                    target_box.Position = Vector2.new(RootToViewportPoint.X, RootToViewportPoint.Y) - Vector2.new(Size / 2, Size / 2)
                 else
                     targetAlpha = 0
                     target_box.Visible = false
