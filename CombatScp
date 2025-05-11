@@ -71,22 +71,6 @@ local SilentAimSettings = {
     CurrentTarget = nil
 }
 
--- Aimbot Section
-local AimbotSettings = {
-    Enabled = false,
-    Mode = "Switch",
-    UseFOV = false,
-    VisFOV = false,
-    WallCheck = false,
-    TeamCheck = false,
-    FOVRadius = 360,
-    TargetPart = "Head",
-    Smoothness = 0.2,
-    IsKeyHeld = false,
-    Bind = Enum.KeyCode.E,
-    CurrentTarget = nil
-}
-
 -- Drawing
 local silent_fov_circle = Drawing.new("Circle")
 silent_fov_circle.Thickness = 1
@@ -97,16 +81,6 @@ silent_fov_circle.Visible = false
 silent_fov_circle.ZIndex = 999
 silent_fov_circle.Transparency = 1
 silent_fov_circle.Color = Color3.fromRGB(255, 255, 255)
-
-local aimbot_fov_circle = Drawing.new("Circle")
-aimbot_fov_circle.Thickness = 1
-aimbot_fov_circle.NumSides = 1000
-aimbot_fov_circle.Radius = AimbotSettings.FOVRadius
-aimbot_fov_circle.Filled = false
-aimbot_fov_circle.Visible = false
-aimbot_fov_circle.ZIndex = 999
-aimbot_fov_circle.Transparency = 1
-aimbot_fov_circle.Color = Color3.fromRGB(255, 255, 255)
 
 local target_box = Drawing.new("Square")
 target_box.Visible = false
@@ -257,7 +231,7 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
 end))
 
 -- Инициализация UI перед использованием
-local SilentAimEnableCheckbox, AimbotEnableCheckbox
+local SilentAimEnableCheckbox
 
 local function initializeUI()
     if not CombatContent or initialized then return end
@@ -269,12 +243,6 @@ local function initializeUI()
         Label = "Silent Aim Enable",
         Value = SilentAimSettings.Enabled,
         Callback = function(self, value)
-            if value and AimbotSettings.Enabled then
-                showNotification("Aimbot is currently active!", true)
-                AimbotSettings.Enabled = false
-                self:SetValue(false)
-                return
-            end
             SilentAimSettings.Enabled = value
             SilentAimSettings.IsKeyHeld = false
         end
@@ -353,11 +321,6 @@ local function initializeUI()
         Label = "Bind",
         Value = SilentAimSettings.Bind,
         Callback = function(self, value)
-            if value == AimbotSettings.Bind then
-                showNotification("This bind is already used by Aimbot!", true)
-                self:SetValue(SilentAimSettings.Bind)
-                return
-            end
             SilentAimSettings.Bind = value
         end
     })
@@ -371,117 +334,6 @@ local function initializeUI()
             SilentAimSettings.TargetPart = value
         end
     })
-
-    local AimbotHeader = CombatContent:CollapsingHeader({Title = "Aimbot"})
-    AimbotEnableCheckbox = AimbotHeader:Checkbox({
-        IniFlag = "Aimbot_Enabled",
-        Label = "Aimbot Enable",
-        Value = AimbotSettings.Enabled,
-        Callback = function(self, value)
-            if value and SilentAimSettings.Enabled then
-                showNotification("Silent Aim is currently active!", true)
-                SilentAimSettings.Enabled = false
-                SilentAimEnableCheckbox:SetValue(false)
-                return
-            end
-            AimbotSettings.Enabled = value
-            AimbotSettings.IsKeyHeld = false
-        end
-    })
-
-    AimbotHeader:Combo({
-        IniFlag = "Aimbot_Mode",
-        Label = "Mode",
-        Selected = AimbotSettings.Mode,
-        Items = {"Switch", "Retention"},
-        Callback = function(self, value)
-            AimbotSettings.Mode = value
-            AimbotSettings.Enabled = false
-            AimbotSettings.IsKeyHeld = false
-        end
-    })
-
-    AimbotHeader:Checkbox({
-        IniFlag = "Aimbot_UseFOV",
-        Label = "Use FOV",
-        Value = AimbotSettings.UseFOV,
-        Callback = function(self, value)
-            AimbotSettings.UseFOV = value
-        end
-    })
-
-    AimbotHeader:Checkbox({
-        IniFlag = "Aimbot_VisFOV",
-        Label = "Vis FOV",
-        Value = AimbotSettings.VisFOV,
-        Callback = function(self, value)
-            AimbotSettings.VisFOV = value
-        end
-    })
-
-    AimbotHeader:SliderInt({
-        IniFlag = "Aimbot_FOVRadius",
-        Label = "FOV Size",
-        Value = AimbotSettings.FOVRadius,
-        Minimum = 0,
-        Maximum = 360,
-        Callback = function(self, value)
-            AimbotSettings.FOVRadius = value
-        end
-    })
-
-    AimbotHeader:Checkbox({
-        IniFlag = "Aimbot_WallCheck",
-        Label = "Wall Check",
-        Value = AimbotSettings.WallCheck,
-        Callback = function(self, value)
-            AimbotSettings.WallCheck = value
-        end
-    })
-
-    AimbotHeader:Checkbox({
-        IniFlag = "Aimbot_TeamCheck",
-        Label = "Team Check",
-        Value = AimbotSettings.TeamCheck,
-        Callback = function(self, value)
-            AimbotSettings.TeamCheck = value
-        end
-    })
-
-    AimbotHeader:Keybind({
-        IniFlag = "Aimbot_Bind",
-        Label = "Bind",
-        Value = AimbotSettings.Bind,
-        Callback = function(self, value)
-            if value == SilentAimSettings.Bind then
-                showNotification("This bind is already used by Silent Aim!", true)
-                self:SetValue(AimbotSettings.Bind)
-                return
-            end
-            AimbotSettings.Bind = value
-        end
-    })
-
-    AimbotHeader:Combo({
-        IniFlag = "Aimbot_TargetPart",
-        Label = "Target Part",
-        Selected = AimbotSettings.TargetPart,
-        Items = {"Head", "HumanoidRootPart"},
-        Callback = function(self, value)
-            AimbotSettings.TargetPart = value
-        end
-    })
-
-    AimbotHeader:SliderFloat({
-        IniFlag = "Aimbot_Smoothness",
-        Label = "Smoothness",
-        Value = AimbotSettings.Smoothness,
-        Minimum = 0,
-        Maximum = 1,
-        Callback = function(self, value)
-            AimbotSettings.Smoothness = value
-        end
-    })
 end
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -490,31 +342,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if SilentAimSettings.Mode == "Switch" then
             SilentAimSettings.Enabled = not SilentAimSettings.Enabled
             SilentAimSettings.IsKeyHeld = false
-            if SilentAimSettings.Enabled and AimbotSettings.Enabled then
-                showNotification("Aimbot is currently active!", true)
-                AimbotSettings.Enabled = false
-                if AimbotEnableCheckbox then
-                    AimbotEnableCheckbox:SetValue(false)
-                end
-            end
         elseif SilentAimSettings.Mode == "Retention" then
             SilentAimSettings.IsKeyHeld = true
             SilentAimSettings.Enabled = false
-        end
-    elseif input.KeyCode == AimbotSettings.Bind then
-        if AimbotSettings.Mode == "Switch" then
-            AimbotSettings.Enabled = not AimbotSettings.Enabled
-            AimbotSettings.IsKeyHeld = false
-            if AimbotSettings.Enabled and SilentAimSettings.Enabled then
-                showNotification("Silent Aim is currently active!", true)
-                SilentAimSettings.Enabled = false
-                if SilentAimEnableCheckbox then
-                    SilentAimEnableCheckbox:SetValue(false)
-                end
-            end
-        elseif AimbotSettings.Mode == "Retention" then
-            AimbotSettings.IsKeyHeld = true
-            AimbotSettings.Enabled = false
         end
     end
 end)
@@ -523,14 +353,11 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == SilentAimSettings.Bind and SilentAimSettings.Mode == "Retention" then
         SilentAimSettings.IsKeyHeld = false
-    elseif input.KeyCode == AimbotSettings.Bind and AimbotSettings.Mode == "Retention" then
-        AimbotSettings.IsKeyHeld = false
     end
 end)
 
 local targetAlpha = 0
 local silentColorTransition = 0
-local aimbotColorTransition = 0
 resume(create(function()
     RenderStepped:Connect(function()
         silent_fov_circle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
@@ -546,37 +373,6 @@ resume(create(function()
         local sg = 255 - (silentColorTransition * 255)
         local sb = 255 - (silentColorTransition * 255)
         silent_fov_circle.Color = Color3.fromRGB(sr, sg, sb)
-
-        aimbot_fov_circle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-        aimbot_fov_circle.Radius = AimbotSettings.FOVRadius
-        aimbot_fov_circle.Visible = AimbotSettings.VisFOV and (AimbotSettings.Enabled or AimbotSettings.IsKeyHeld)
-        local ClosestAimbot = getClosestPlayer(AimbotSettings)
-        if (AimbotSettings.Enabled or (AimbotSettings.Mode == "Retention" and AimbotSettings.IsKeyHeld)) and ClosestAimbot then
-            aimbotColorTransition = math.min(aimbotColorTransition + 0.05, 1)
-        else
-            aimbotColorTransition = math.max(aimbotColorTransition - 0.05, 0)
-        end
-        local ar = 255 - (aimbotColorTransition * 255)
-        local ag = 255 - (aimbotColorTransition * 0)
-        local ab = 255 - (aimbotColorTransition * 255)
-        aimbot_fov_circle.Color = Color3.fromRGB(ar, ag, ab)
-
-        if (AimbotSettings.Enabled or (AimbotSettings.Mode == "Retention" and AimbotSettings.IsKeyHeld)) and ClosestAimbot then
-            local target = ClosestAimbot
-            if target then
-                local localChar = LocalPlayer.Character
-                if localChar then
-                    local hrp = localChar:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        local targetPos = target.Position
-                        local hrpPos = hrp.Position
-                        local direction = (targetPos - hrpPos).Unit
-                        local targetCFrame = CFrame.new(hrpPos, hrpPos + direction)
-                        hrp.CFrame = hrp.CFrame:Lerp(targetCFrame, AimbotSettings.Smoothness)
-                    end
-                end
-            end
-        end
 
         if SilentAimSettings.ShowTarget and (SilentAimSettings.Enabled or SilentAimSettings.IsKeyHeld) then
             if ClosestSilent then
