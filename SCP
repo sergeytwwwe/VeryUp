@@ -1,4 +1,4 @@
--- init
+-- Инициализация скрипта
 if not game:IsLoaded() then 
     game.Loaded:Wait()
 end
@@ -24,10 +24,11 @@ end
 
 -- ReGui
 local InsertService = game:GetService("InsertService")
+local HttpService = game:GetService("HttpService")
+
 local ReGui = loadstring(game:HttpGet('https://raw.githubusercontent.com/depthso/Dear-ReGui/refs/heads/main/ReGui.lua'))()
 local PrefabsId = "rbxassetid://" .. ReGui.PrefabsId
 
--- Инициализация ReGui
 ReGui:Init({
     Prefabs = InsertService:LoadLocalAsset(PrefabsId)
 })
@@ -68,6 +69,22 @@ local function getPlayerRole(player)
     return team and team.Name or "Unknown"
 end
 
+-- Notifications
+local showNotification
+local notifSuccess, notifError = pcall(function()
+    showNotification = loadstring(game:HttpGet("https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/VeryUpNotifications"))()
+end)
+if not notifSuccess then
+    warn("Failed to load VeryUpNotifications: " .. notifError)
+    showNotification = function(message, isError)
+        if isError then
+            warn("[Notification] " .. message)
+        else
+            print("[Notification] " .. message)
+        end
+    end
+end
+
 -- Окно с вкладками
 local TabsWindow = ReGui:TabsWindow({
     Title = "ESP Loader",
@@ -98,9 +115,9 @@ local CombatContent = CombatTab:ScrollingCanvas({Fill = true})
 local MiscTab = TabsWindow:CreateTab({Name = "Misc"})
 local MiscContent = MiscTab:ScrollingCanvas({Fill = true})
 
--- Вкладка Settings
-local SettingsTab = TabsWindow:CreateTab({Name = "Settings"})
-local SettingsContent = SettingsTab:ScrollingCanvas({Fill = true})
+-- Вкладка Config
+local ConfigTab = TabsWindow:CreateTab({Name = "Config"})
+local ConfigContent = ConfigTab:ScrollingCanvas({Fill = true})
 
 -- Noclip
 local noclipEnabled = false
@@ -299,22 +316,6 @@ target_box.Filled = false
 target_box.CornerRadius = 0.3
 target_box.Transparency = 1
 
--- Notifications
-local showNotification
-local notifSuccess, notifError = pcall(function()
-    showNotification = loadstring(game:HttpGet("https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/VeryUpNotifications"))()
-end)
-if not notifSuccess then
-    warn("Failed to load VeryUpNotifications: " .. notifError)
-    showNotification = function(message, isError)
-        if isError then
-            warn("[Notification] " .. message)
-        else
-            print("[Notification] " .. message)
-        end
-    end
-end
-
 -- Functions
 local function getPositionOnScreen(Vector)
     local Vec3, OnScreen = WorldToScreen(Camera, Vector)
@@ -498,7 +499,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             if SilentAimSettings.Enabled and AimbotSettings.Enabled then
                 showNotification("Aimbot is currently active!", true)
                 AimbotSettings.Enabled = false
-                AimbotEnableCheckbox:SetValue(false)
+                SilentAimEnableCheckbox:SetValue(false)
             end
         elseif SilentAimSettings.Mode == "Retention" then
             SilentAimSettings.IsKeyHeld = true
@@ -529,9 +530,10 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
     end
 end)
 
+-- UI для вкладки Combat
 local SilentAimHeader = CombatContent:CollapsingHeader({Title = "Silent Aim"})
 local SilentAimEnableCheckbox = SilentAimHeader:Checkbox({
-    IniFlag = "SilentAimEnabled",
+    IniFlag = "SilentAim_Enabled",
     Label = "Silent Aim Enable",
     Value = SilentAimSettings.Enabled,
     Callback = function(self, value)
@@ -547,7 +549,7 @@ local SilentAimEnableCheckbox = SilentAimHeader:Checkbox({
 })
 
 SilentAimHeader:Combo({
-    IniFlag = "SilentAimMode",
+    IniFlag = "SilentAim_Mode",
     Label = "Mode",
     Selected = SilentAimSettings.Mode,
     Items = {"Switch", "Retention"},
@@ -559,7 +561,7 @@ SilentAimHeader:Combo({
 })
 
 SilentAimHeader:Checkbox({
-    IniFlag = "UseFOV",
+    IniFlag = "SilentAim_UseFOV",
     Label = "Use FOV",
     Value = SilentAimSettings.UseFOV,
     Callback = function(self, value)
@@ -568,7 +570,7 @@ SilentAimHeader:Checkbox({
 })
 
 SilentAimHeader:Checkbox({
-    IniFlag = "VisFOV",
+    IniFlag = "SilentAim_VisFOV",
     Label = "Vis FOV",
     Value = SilentAimSettings.VisFOV,
     Callback = function(self, value)
@@ -577,7 +579,7 @@ SilentAimHeader:Checkbox({
 })
 
 SilentAimHeader:SliderInt({
-    IniFlag = "FOVRadius",
+    IniFlag = "SilentAim_FOVRadius",
     Label = "FOV Size",
     Value = SilentAimSettings.FOVRadius,
     Minimum = 0,
@@ -588,7 +590,7 @@ SilentAimHeader:SliderInt({
 })
 
 SilentAimHeader:Checkbox({
-    IniFlag = "ShowTarget",
+    IniFlag = "SilentAim_ShowTarget",
     Label = "Show Target",
     Value = SilentAimSettings.ShowTarget,
     Callback = function(self, value)
@@ -597,7 +599,7 @@ SilentAimHeader:Checkbox({
 })
 
 SilentAimHeader:Checkbox({
-    IniFlag = "WallCheck",
+    IniFlag = "SilentAim_WallCheck",
     Label = "Wall Check",
     Value = SilentAimSettings.WallCheck,
     Callback = function(self, value)
@@ -606,7 +608,7 @@ SilentAimHeader:Checkbox({
 })
 
 SilentAimHeader:Checkbox({
-    IniFlag = "TeamCheck",
+    IniFlag = "SilentAim_TeamCheck",
     Label = "Team Check",
     Value = SilentAimSettings.TeamCheck,
     Callback = function(self, value)
@@ -615,7 +617,7 @@ SilentAimHeader:Checkbox({
 })
 
 SilentAimHeader:Keybind({
-    IniFlag = "SilentAimBind",
+    IniFlag = "SilentAim_Bind",
     Label = "Bind",
     Value = SilentAimSettings.Bind,
     Callback = function(self, value)
@@ -629,7 +631,7 @@ SilentAimHeader:Keybind({
 })
 
 SilentAimHeader:Combo({
-    IniFlag = "TargetPart",
+    IniFlag = "SilentAim_TargetPart",
     Label = "Target Part",
     Selected = SilentAimSettings.TargetPart,
     Items = {"Head", "HumanoidRootPart"},
@@ -640,7 +642,7 @@ SilentAimHeader:Combo({
 
 local AimbotHeader = CombatContent:CollapsingHeader({Title = "Aimbot"})
 local AimbotEnableCheckbox = AimbotHeader:Checkbox({
-    IniFlag = "AimbotEnabled",
+    IniFlag = "Aimbot_Enabled",
     Label = "Aimbot Enable",
     Value = AimbotSettings.Enabled,
     Callback = function(self, value)
@@ -656,7 +658,7 @@ local AimbotEnableCheckbox = AimbotHeader:Checkbox({
 })
 
 AimbotHeader:Combo({
-    IniFlag = "AimbotMode",
+    IniFlag = "Aimbot_Mode",
     Label = "Mode",
     Selected = AimbotSettings.Mode,
     Items = {"Switch", "Retention"},
@@ -668,7 +670,7 @@ AimbotHeader:Combo({
 })
 
 AimbotHeader:Checkbox({
-    IniFlag = "UseFOV",
+    IniFlag = "Aimbot_UseFOV",
     Label = "Use FOV",
     Value = AimbotSettings.UseFOV,
     Callback = function(self, value)
@@ -677,7 +679,7 @@ AimbotHeader:Checkbox({
 })
 
 AimbotHeader:Checkbox({
-    IniFlag = "VisFOV",
+    IniFlag = "Aimbot_VisFOV",
     Label = "Vis FOV",
     Value = AimbotSettings.VisFOV,
     Callback = function(self, value)
@@ -686,7 +688,7 @@ AimbotHeader:Checkbox({
 })
 
 AimbotHeader:SliderInt({
-    IniFlag = "FOVRadius",
+    IniFlag = "Aimbot_FOVRadius",
     Label = "FOV Size",
     Value = AimbotSettings.FOVRadius,
     Minimum = 0,
@@ -697,7 +699,7 @@ AimbotHeader:SliderInt({
 })
 
 AimbotHeader:Checkbox({
-    IniFlag = "WallCheck",
+    IniFlag = "Aimbot_WallCheck",
     Label = "Wall Check",
     Value = AimbotSettings.WallCheck,
     Callback = function(self, value)
@@ -706,7 +708,7 @@ AimbotHeader:Checkbox({
 })
 
 AimbotHeader:Checkbox({
-    IniFlag = "TeamCheck",
+    IniFlag = "Aimbot_TeamCheck",
     Label = "Team Check",
     Value = AimbotSettings.TeamCheck,
     Callback = function(self, value)
@@ -715,7 +717,7 @@ AimbotHeader:Checkbox({
 })
 
 AimbotHeader:Keybind({
-    IniFlag = "AimbotBind",
+    IniFlag = "Aimbot_Bind",
     Label = "Bind",
     Value = AimbotSettings.Bind,
     Callback = function(self, value)
@@ -729,7 +731,7 @@ AimbotHeader:Keybind({
 })
 
 AimbotHeader:Combo({
-    IniFlag = "TargetPart",
+    IniFlag = "Aimbot_TargetPart",
     Label = "Target Part",
     Selected = AimbotSettings.TargetPart,
     Items = {"Head", "HumanoidRootPart"},
@@ -739,7 +741,7 @@ AimbotHeader:Combo({
 })
 
 AimbotHeader:SliderFloat({
-    IniFlag = "Smoothness",
+    IniFlag = "Aimbot_Smoothness",
     Label = "Smoothness",
     Value = AimbotSettings.Smoothness,
     Minimum = 0,
@@ -749,6 +751,7 @@ AimbotHeader:SliderFloat({
     end
 })
 
+-- UI для вкладки Misc
 local MiscHeader = MiscContent:CollapsingHeader({Title = "Movement"})
 local NoclipEnableCheckbox = MiscHeader:Checkbox({
     IniFlag = "NoclipEnabled",
@@ -811,12 +814,10 @@ MiscHeader:SliderInt({
     end
 })
 
--- Settings Tab: Window Options and Config Management
-local baseFolder = "VeryUp"
-local scpDemonstrationFolder = baseFolder .. "/Scp Demonstration"
-local configFolder = scpDemonstrationFolder .. "/Config"
+-- Система конфигураций
+local baseFolder = "Title Here"
+local configFolder = baseFolder .. "/Config"
 if not isfolder(baseFolder) then makefolder(baseFolder) end
-if not isfolder(scpDemonstrationFolder) then makefolder(scpDemonstrationFolder) end
 if not isfolder(configFolder) then makefolder(configFolder) end
 
 local configNameInput = ""
@@ -859,103 +860,127 @@ local function updateConfigList()
     end
 end
 
-local settingsSuccess, settingsError = pcall(function()
-    SettingsContent:Separator({Text = "Window Options"})
-    local optionsRow = SettingsContent:Row()
-    optionsRow:Checkbox({
-        IniFlag = "NoResize",
-        Label = "No Resize",
-        Value = false,
-        Callback = function(self, value)
-            TabsWindow:UpdateConfig({NoResize = value})
-        end
-    })
-    optionsRow:Checkbox({
-        IniFlag = "NoTitleBar",
-        Label = "No Title Bar",
-        Value = false,
-        Callback = function(self, value)
-            TabsWindow:UpdateConfig({NoTitleBar = value})
-        end
-    })
-    optionsRow:Checkbox({
-        IniFlag = "NoClose",
-        Label = "No Close",
-        Value = false,
-        Callback = function(self, value)
-            TabsWindow:UpdateConfig({NoClose = value})
-        end
-    })
-    SettingsContent:Separator({Text = "Config Management"})
-    SettingsContent:InputText({
-        IniFlag = "ConfigNameInput",
-        Label = "Config Name",
-        Value = "",
-        Callback = function(self, value)
-            configNameInput = value
-        end
-    })
-    SettingsContent:Button({
-        Text = "Create Config",
-        Callback = function()
-            if configNameInput ~= "" then
-                local configPath = configFolder .. "/" .. configNameInput .. ".ini"
-                if isfile(configPath) then
-                    showNotification("This config already exists!", true)
-                    return
-                end
-                local saveString = ReGui:DumpIni(true)
-                if saveString then
-                    writefile(configPath, saveString)
-                    updateConfigList()
-                end
-            end
-        end
-    })
-    SettingsContent:Button({
-        Text = "Load Config",
-        Callback = function()
-            if configNameInput ~= "" then
-                local configPath = configFolder .. "/" .. configNameInput .. ".ini"
-                if isfile(configPath) then
-                    local configData = readfile(configPath)
-                    ReGui:LoadIni(configData, true)
-                end
-            end
-        end
-    })
-    SettingsContent:Button({
-        Text = "Reload Config",
-        Callback = function()
-            updateConfigList()
-        end
-    })
-    configCombo = SettingsContent:Combo({
-        Label = "List Config",
-        Selected = "",
-        Items = configList,
-        Callback = function(self, value)
-            configNameInput = value
-        end
-    })
-    SettingsContent:Button({
-        Text = "Delete Config",
-        Callback = function()
-            if configNameInput ~= "" then
-                local configPath = configFolder .. "/" .. configNameInput .. ".ini"
-                if isfile(configPath) then
-                    delfile(configPath)
-                    updateConfigList()
-                end
-            end
-        end
-    })
-    updateConfigList()
-end)
-if not settingsSuccess then
-    warn("Failed to initialize settings: " .. settingsError)
-    showNotification("Failed to initialize settings: " .. settingsError, true)
-end
+-- UI для вкладки Config
+local ConfigHeader = ConfigContent:CollapsingHeader({Title = "Config Management"})
+ConfigHeader:Separator({Text = "Config Management"})
 
--- Показываем окно
-TabsWindow:ToggleVisibility()
+ConfigHeader:InputText({
+    IniFlag = "ConfigNameInput",
+    Label = "Config Name",
+    Value = "",
+    Placeholder = "Enter config name",
+    Callback = function(self, value)
+        configNameInput = value
+    end
+})
+
+ConfigHeader:Button({
+    Text = "Create Config",
+    Callback = function()
+        if configNameInput == "" then
+            showNotification("Please enter a config name!", true)
+            return
+        end
+        local configPath = configFolder .. "/" .. configNameInput .. ".ini"
+        if isfile(configPath) then
+            showNotification("This config already exists!", true)
+            return
+        end
+        local saveString = ReGui:DumpIni(true)
+        if saveString then
+            writefile(configPath, saveString)
+            updateConfigList()
+            showNotification("Config '" .. configNameInput .. "' created successfully!", false)
+        else
+            showNotification("Failed to create config!", true)
+        end
+    end
+})
+
+ConfigHeader:Button({
+    Text = "Load Config",
+    Callback = function()
+        if configNameInput == "" then
+            showNotification("Please select a config!", true)
+            return
+        end
+        local configPath = configFolder .. "/" .. configNameInput .. ".ini"
+        if isfile(configPath) then
+            local configData = readfile(configPath)
+            ReGui:LoadIni(configData, true)
+            -- Применяем настройки после загрузки
+            local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if WalkspeedSettings.Enabled or (WalkspeedSettings.Mode == "Retention" and WalkspeedSettings.IsKeyHeld) then
+                if hum then
+                    hum.WalkSpeed = WalkspeedSettings.Speed
+                end
+            end
+            if noclipEnabled then
+                enableNoclip()
+            else
+                disableNoclip()
+            end
+            showNotification("Config '" .. configNameInput .. "' loaded successfully!", false)
+        else
+            showNotification("Config '" .. configNameInput .. "' does not exist!", true)
+        end
+    end
+})
+
+ConfigHeader:Button({
+    Text = "Reload Config List",
+    Callback = function()
+        updateConfigList()
+        showNotification("Config list refreshed!", false)
+    end
+})
+
+configCombo = ConfigHeader:Combo({
+    IniFlag = "ConfigList",
+    Label = "Config List",
+    Selected = "",
+    Items = configList,
+    Callback = function(self, value)
+        configNameInput = value
+    end
+})
+
+ConfigHeader:Button({
+    Text = "Delete Config",
+    Callback = function()
+        if configNameInput == "" then
+            showNotification("Please select a config!", true)
+            return
+        end
+        local configPath = configFolder .. "/" .. configNameInput .. ".ini"
+        if isfile(configPath) then
+            delfile(configPath)
+            updateConfigList()
+            showNotification("Config '" .. configNameInput .. "' deleted successfully!", false)
+        else
+            showNotification("Config '" .. configNameInput .. "' does not exist!", true)
+        end
+    end
+})
+
+-- Инициализация списка конфигов при запуске
+updateConfigList()
+
+-- Загрузка конфига по умолчанию, если существует
+if isfile(configFolder .. "/default.ini") then
+    configNameInput = "default"
+    local configData = readfile(configFolder .. "/default.ini")
+    ReGui:LoadIni(configData, true)
+    -- Применяем настройки после загрузки
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if WalkspeedSettings.Enabled or (WalkspeedSettings.Mode == "Retention" and WalkspeedSettings.IsKeyHeld) then
+        if hum then
+            hum.WalkSpeed = WalkspeedSettings.Speed
+        end
+    end
+    if noclipEnabled then
+        enableNoclip()
+    else
+        disableNoclip()
+    end
+end
