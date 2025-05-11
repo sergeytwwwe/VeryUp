@@ -139,15 +139,19 @@ local function IsPlayerVisible(Player, settings)
     local TargetPart = PlayerCharacter:FindFirstChild(settings.TargetPart)
     if not TargetPart then TargetPart = PlayerCharacter:FindFirstChild("HumanoidRootPart") end
     if not TargetPart then return false end
-    local ray = Workspace:Raycast(Camera.CFrame.Position, (TargetPart.Position - Camera.CFrame.Position).Unit * 1000, RaycastParams.new())
-    if ray and ray.Instance and ray.Instance.CanCollide and ray.Instance ~= TargetPart and ray.Instance.Parent ~= PlayerCharacter then
-        return false
-    end
-    return true
+
+    local origin = Camera.CFrame.Position
+    local direction = (TargetPart.Position - origin).Unit * (TargetPart.Position - origin).Magnitude
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {LocalPlayerCharacter, PlayerCharacter}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+    local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
+    return not (raycastResult and raycastResult.Instance and raycastResult.Instance.CanCollide)
 end
 
 local function getClosestPlayer(settings)
-    local Closest
+    local Closest = nil
     local DistanceToMouse = math.huge
     for _, Player in next, GetPlayers(Players) do
         if Player == LocalPlayer then continue end
