@@ -137,7 +137,6 @@ local isCheckingWall = false
 
 -- Wall Check с Raycast, как в Wallcheck.txt
 local function checkWall(Player, settings)
-    -- Предотвращаем рекурсию
     if isCheckingWall then
         return true
     end
@@ -159,15 +158,6 @@ local function checkWall(Player, settings)
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
 
     local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
-
-    -- Отладка: раскомментируйте, если нужно увидеть, что блокирует
-    --[[
-    if raycastResult then
-        print("Wall Check hit: " .. tostring(raycastResult.Instance) .. " (CanCollide: " .. tostring(raycastResult.Instance and raycastResult.Instance.CanCollide) .. ")")
-    else
-        print("Wall Check: No obstruction")
-    end
-    --]]
 
     isCheckingWall = false
 
@@ -234,12 +224,10 @@ local isProcessingSilentAim = false
 
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
-    -- Не вмешиваемся в вызовы Raycast из checkWall
     if isCheckingWall then
         return oldNamecall(...)
     end
 
-    -- Предотвращаем множественные вызовы Silent Aim
     if isProcessingSilentAim then
         return oldNamecall(...)
     end
@@ -563,7 +551,7 @@ resume(create(function()
         aimbot_fov_circle.Radius = AimbotSettings.FOVRadius
         aimbot_fov_circle.Visible = AimbotSettings.VisFOV and (AimbotSettings.Enabled or AimbotSettings.IsKeyHeld)
         local ClosestAimbot = getClosestPlayer(AimbotSettings)
-        if (AimbotSettings.Enabled or AimbotSettings.IsKeyHeld) and ClosestAimbot then
+        if (AimbotSettings.Enabled or (AimbotSettings.Mode == "Retention" and AimbotSettings.IsKeyHeld)) and ClosestAimbot then
             aimbotColorTransition = math.min(aimbotColorTransition + 0.05, 1)
         else
             aimbotColorTransition = math.max(aimbotColorTransition - 0.05, 0)
@@ -576,12 +564,17 @@ resume(create(function()
         if (AimbotSettings.Enabled or (AimbotSettings.Mode == "Retention" and AimbotSettings.IsKeyHeld)) and ClosestAimbot then
             local target = ClosestAimbot
             if target then
-                local targetPart = target
-                local targetPos = targetPart.Position
-                local cameraPos = Camera.CFrame.Position
-                local direction = (targetPos - cameraPos).Unit
-                local targetCFrame = CFrame.new(cameraPos, cameraPos + direction)
-                Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, AimbotSettings.Smoothness)
+                local localChar = LocalPlayer.Character
+                if localChar then
+                    local hrp = localChar:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        local targetPos = target.Position
+                        local hrpPos = hrp.Position
+                        local direction = (targetPos - hrpPos).Unit
+                        local targetCFrame = CFrame.new(hrpPos, hrpPos + direction)
+                        hrp.CFrame = hrp.CFrame:Lerp(targetCFrame, AimbotSettings.Smoothness)
+                    end
+                end
             end
         end
 
