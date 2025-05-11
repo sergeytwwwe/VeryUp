@@ -388,7 +388,7 @@ local function MainItemESP(item, services, settings)
         Left = NewLine(Color3.fromRGB(255, 255, 255), 2),
         Right = NewLine(Color3.fromRGB(255, 255, 255), 2),
         TL1 = NewLine(Color3.fromRGB(255, 255, 255), 2),
-        TL2 = NewLine(Color3.fromRGB(255, 255, 255), 2),
+        TL2 = NewLine(Color3.fromRGB(255, 255, 252),
         TR1 = NewLine(Color3.fromRGB(255, 255, 255), 2),
         TR2 = NewLine(Color3.fromRGB(255, 255, 255), 2),
         BL1 = NewLine(Color3.fromRGB(255, 255, 255), 2),
@@ -685,60 +685,6 @@ end
 
 -- Основная функция, которая будет вызвана из loader.lua
 return function(VisualContent, services)
-    -- Настройки
-    local Settings = {
-        Enabled = true,
-        MaxDistance = 1000,
-        Box = true,
-        BoxStyle = "Modern",
-        Name = true,
-        Distance = false,
-        Health = false,
-        Weapon = false,
-        Role = false,
-        TeamCheck = false,
-        ItemESP = { Enabled = false, Box = false, BoxStyle = "Modern", Name = false, MaxDistance = 1000 },
-        RoomESP = { 
-            Enabled = false, 
-            Name = false, 
-            Distance = false, 
-            MaxDistance = 1000, 
-            Rooms = {
-                ["914"] = { Path = "Light Containment Zone:914:Room:ResetPoint", Name = "Scp 914", Color = Color3.fromRGB(255, 255, 0) },
-                ["CheckptB"] = { Path = "Light Containment Zone:CheckptB:Chkpt:Bounds:ResetPoint", Name = "Checkpoint B", Color = Color3.fromRGB(255, 255, 0) },
-                ["CheckptA"] = { Path = "Light Containment Zone:CheckptA:Chkpt:Bounds:ResetPoint", Name = "Checkpoint A", Color = Color3.fromRGB(255, 255, 0) },
-                ["173"] = { Path = "Light Containment Zone:173:Stairs:Bounds:ResetPoint", Name = "Scp 173", Color = Color3.fromRGB(255, 255, 0) },
-                ["Armory"] = { Path = "Light Containment Zone:Armory:Room:Bounds:ResetPoint", Name = "Armory", Color = Color3.fromRGB(255, 255, 0) },
-                ["330"] = { Path = "Light Containment Zone:330:Room:Bounds:ResetPoint", Name = "Scp 330", Color = Color3.fromRGB(255, 255, 0) },
-                ["Cafe"] = { Path = "Light Containment Zone:Cafe:Room:Bounds:ResetPoint", Name = "Cafe", Color = Color3.fromRGB(255, 255, 0) },
-                ["ClassD"] = { Path = "Light Containment Zone:Class D Spawn:Room:Bounds:ResetPoint", Name = "Class D", Color = Color3.fromRGB(255, 255, 0) },
-                ["049"] = { Path = "Heavy Containment Zone:049:Room:Bounds:ResetPoint", Name = "Scp 049", Color = Color3.fromRGB(0, 0, 255) },
-                ["079"] = { Path = "Heavy Containment Zone:079:Room:Bounds:ResetPoint", Name = "Scp 079", Color = Color3.fromRGB(0, 0, 255) },
-                ["096"] = { Path = "Heavy Containment Zone:096:Room:Bounds:ResetPoint", Name = "Scp 096", Color = Color3.fromRGB(0, 0, 255) },
-                ["106"] = { Path = "Heavy Containment Zone:106:Room:Bounds:ResetPoint", Name = "Scp 106", Color = Color3.fromRGB(0, 0, 255) },
-                ["939"] = { Path = "Heavy Containment Zone:939:Room:Bounds:ResetPoint", Name = "Scp 939", Color = Color3.fromRGB(0, 0, 255) },
-                ["Hid"] = { Path = "Heavy Containment Zone:Hid:Room:Bounds:ResetPoint", Name = "Hid", Color = Color3.fromRGB(0, 0, 255) },
-                ["Servers"] = { Path = "Heavy Containment Zone:Servers:Room:Bounds:ResetPoint", Name = "Servers", Color = Color3.fromRGB(0, 0, 255) },
-                ["Warhead"] = { Path = "Heavy Containment Zone:Warhead:Room:Bounds:ResetPoint", Name = "Warhead", Color = Color3.fromRGB(0, 0, 255) },
-                ["NorthCheckpoint"] = { Path = "Heavy Containment Zone:North HCZ-EZ Checkpoint:HCZ Part:Room:Bounds:ResetPoint", Name = "North HCZ-EZ Checkpoint", Color = Color3.fromRGB(255, 0, 0) },
-                ["SouthCheckpoint"] = { Path = "Heavy Containment Zone:South HCZ-EZ Checkpoint:HCZ Part:Room:Bounds:ResetPoint", Name = "South HCZ-EZ Checkpoint", Color = Color3.fromRGB(255, 0, 0) },
-                ["GateA"] = { Path = "Entrance Zone:GateA:Room:Bounds:ResetPoint", Name = "Gate A", Color = Color3.fromRGB(255, 0, 0) },
-                ["GateB"] = { Path = "Entrance Zone:GateB:Room:Bounds:ResetPoint", Name = "Gate B", Color = Color3.fromRGB(255, 0, 0) },
-                ["End"] = { Path = "End:Room:Bounds:ResetPoint", Name = "End", Color = Color3.fromRGB(0, 100, 0) },
-                ["CheckptA_HCZ"] = { Path = "Heavy Containment Zone:CheckptA:Room:Bounds:ResetPoint", Name = "Checkpoint A", Color = Color3.fromRGB(0, 0, 255) },
-                ["CheckptB_HCZ"] = { Path = "Heavy Containment Zone:CheckptB:Room:Bounds:ResetPoint", Name = "Checkpoint B", Color = Color3.fromRGB(0, 0, 255) }
-            }
-        },
-        Colors = {
-            Box = Color3.fromRGB(255, 255, 255),
-            Name = Color3.fromRGB(255, 255, 255),
-            Distance = Color3.fromRGB(255, 255, 255),
-            Health = Color3.fromRGB(255, 255, 255),
-            Weapon = Color3.fromRGB(255, 255, 255),
-            Role = Color3.fromRGB(255, 255, 255)
-        }
-    }
-
     -- Инициализация всех типов ESP
     initPlayerESP(services, Settings)
     initItemESP(services, Settings)
@@ -756,37 +702,274 @@ return function(VisualContent, services)
         return
     end
 
-    GeneralSettings:Checkbox({ Label = "ESP On", Value = true, Callback = function(_, value) Settings.Enabled = value end })
-    GeneralSettings:SliderInt({ Label = "Max Distance", Value = 1000, Minimum = 100, Maximum = 5000, Callback = function(_, value) Settings.MaxDistance = value end })
-    GeneralSettings:Checkbox({ Label = "Team Check", Value = false, Callback = function(_, value) Settings.TeamCheck = value end })
+    local espEnableCheckbox = GeneralSettings:Checkbox({
+        IniFlag = "ESPEnabled",
+        Label = "ESP On",
+        Value = Settings.Enabled,
+        Callback = function(self, value)
+            Settings.Enabled = value
+            self:SetValue(value)
+        end
+    })
+    local maxDistanceSlider = GeneralSettings:SliderInt({
+        IniFlag = "ESPMaxDistance",
+        Label = "Max Distance",
+        Value = Settings.MaxDistance,
+        Minimum = 100,
+        Maximum = 5000,
+        Callback = function(self, value)
+            Settings.MaxDistance = value
+            self:SetValue(value)
+        end
+    })
+    local teamCheckCheckbox = GeneralSettings:Checkbox({
+        IniFlag = "ESPTeamCheck",
+        Label = "Team Check",
+        Value = Settings.TeamCheck,
+        Callback = function(self, value)
+            Settings.TeamCheck = value
+            self:SetValue(value)
+        end
+    })
 
     local VisualElements = VisualContent:CollapsingHeader({ Title = "Visual Elements" })
-    VisualElements:Checkbox({ Label = "Box ESP", Value = true, Callback = function(_, value) Settings.Box = value end })
-    VisualElements:Combo({ Label = "Box Style", Selected = "Modern", Items = {"Default", "Modern"}, Callback = function(_, value) Settings.BoxStyle = value end })
-    VisualElements:Checkbox({ Label = "Name ESP", Value = true, Callback = function(_, value) Settings.Name = value end })
-    VisualElements:Checkbox({ Label = "Distance ESP", Value = false, Callback = function(_, value) Settings.Distance = value end })
-    VisualElements:Checkbox({ Label = "Health ESP", Value = false, Callback = function(_, value) Settings.Health = value end })
-    VisualElements:Checkbox({ Label = "Weapon ESP", Value = false, Callback = function(_, value) Settings.Weapon = value end })
-    VisualElements:Checkbox({ Label = "Role ESP", Value = false, Callback = function(_, value) Settings.Role = value end })
+    local boxESPCheckbox = VisualElements:Checkbox({
+        IniFlag = "ESPBox",
+        Label = "Box ESP",
+        Value = Settings.Box,
+        Callback = function(self, value)
+            Settings.Box = value
+            self:SetValue(value)
+        end
+    })
+    local boxStyleCombo = VisualElements:Combo({
+        IniFlag = "ESPBoxStyle",
+        Label = "Box Style",
+        Selected = Settings.BoxStyle,
+        Items = {"Default", "Modern"},
+        Callback = function(self, value)
+            Settings.BoxStyle = value
+            self:SetValue(value)
+        end
+    })
+    local nameESPCheckbox = VisualElements:Checkbox({
+        IniFlag = "ESPName",
+        Label = "Name ESP",
+        Value = Settings.Name,
+        Callback = function(self, value)
+            Settings.Name = value
+            self:SetValue(value)
+        end
+    })
+    local distanceESPCheckbox = VisualElements:Checkbox({
+        IniFlag = "ESPDistance",
+        Label = "Distance ESP",
+        Value = Settings.Distance,
+        Callback = function(self, value)
+            Settings.Distance = value
+            self:SetValue(value)
+        end
+    })
+    local healthESPCheckbox = VisualElements:Checkbox({
+        IniFlag = "ESPHealth",
+        Label = "Health ESP",
+        Value = Settings.Health,
+        Callback = function(self, value)
+            Settings.Health = value
+            self:SetValue(value)
+        end
+    })
+    local weaponESPCheckbox = VisualElements:Checkbox({
+        IniFlag = "ESPWeapon",
+        Label = "Weapon ESP",
+        Value = Settings.Weapon,
+        Callback = function(self, value)
+            Settings.Weapon = value
+            self:SetValue(value)
+        end
+    })
+    local roleESPCheckbox = VisualElements:Checkbox({
+        IniFlag = "ESPRole",
+        Label = "Role ESP",
+        Value = Settings.Role,
+        Callback = function(self, value)
+            Settings.Role = value
+            self:SetValue(value)
+        end
+    })
 
     local ColorsSettings = VisualElements:TreeNode({ Title = "Colors" })
-    ColorsSettings:InputColor3({ Label = "Box Color", Value = Settings.Colors.Box, Callback = function(_, value) Settings.Colors.Box = value end })
-    ColorsSettings:InputColor3({ Label = "Name Color", Value = Settings.Colors.Name, Callback = function(_, value) Settings.Colors.Name = value end })
-    ColorsSettings:InputColor3({ Label = "Distance Color", Value = Settings.Colors.Distance, Callback = function(_, value) Settings.Colors.Distance = value end })
-    ColorsSettings:InputColor3({ Label = "Health Color", Value = Settings.Colors.Health, Callback = function(_, value) Settings.Colors.Health = value end })
-    ColorsSettings:InputColor3({ Label = "Weapon Color", Value = Settings.Colors.Weapon, Callback = function(_, value) Settings.Colors.Weapon = value end })
-    ColorsSettings:InputColor3({ Label = "Role Color", Value = Settings.Colors.Role, Callback = function(_, value) Settings.Colors.Role = value end })
+    local boxColorInput = ColorsSettings:InputColor3({
+        IniFlag = "ESPBoxColor",
+        Label = "Box Color",
+        Value = Settings.Colors.Box,
+        Callback = function(self, value)
+            Settings.Colors.Box = value
+            self:SetValue(value)
+        end
+    })
+    local nameColorInput = ColorsSettings:InputColor3({
+        IniFlag = "ESPNameColor",
+        Label = "Name Color",
+        Value = Settings.Colors.Name,
+        Callback = function(self, value)
+            Settings.Colors.Name = value
+            self:SetValue(value)
+        end
+    })
+    local distanceColorInput = ColorsSettings:InputColor3({
+        IniFlag = "ESPDistanceColor",
+        Label = "Distance Color",
+        Value = Settings.Colors.Distance,
+        Callback = function(self, value)
+            Settings.Colors.Distance = value
+            self:SetValue(value)
+        end
+    })
+    local healthColorInput = ColorsSettings:InputColor3({
+        IniFlag = "ESPHealthColor",
+        Label = "Health Color",
+        Value = Settings.Colors.Health,
+        Callback = function(self, value)
+            Settings.Colors.Health = value
+            self:SetValue(value)
+        end
+    })
+    local weaponColorInput = ColorsSettings:InputColor3({
+        IniFlag = "ESPWeaponColor",
+        Label = "Weapon Color",
+        Value = Settings.Colors.Weapon,
+        Callback = function(self, value)
+            Settings.Colors.Weapon = value
+            self:SetValue(value)
+        end
+    })
+    local roleColorInput = ColorsSettings:InputColor3({
+        IniFlag = "ESPRoleColor",
+        Label = "Role Color",
+        Value = Settings.Colors.Role,
+        Callback = function(self, value)
+            Settings.Colors.Role = value
+            self:SetValue(value)
+        end
+    })
 
     local ItemESP = VisualElements:TreeNode({ Title = "Item ESP" })
-    ItemESP:Checkbox({ Label = "Enable Item ESP", Value = false, Callback = function(_, value) Settings.ItemESP.Enabled = value end })
-    ItemESP:Checkbox({ Label = "Item Box ESP", Value = false, Callback = function(_, value) Settings.ItemESP.Box = value end })
-    ItemESP:Combo({ Label = "Item Box Style", Selected = "Modern", Items = {"Default", "Modern"}, Callback = function(_, value) Settings.ItemESP.BoxStyle = value end })
-    ItemESP:Checkbox({ Label = "Item Name ESP", Value = false, Callback = function(_, value) Settings.ItemESP.Name = value end })
-    ItemESP:SliderInt({ Label = "Item Max Distance", Value = 1000, Minimum = 100, Maximum = 5000, Callback = function(_, value) Settings.ItemESP.MaxDistance = value end })
+    local itemESPEnableCheckbox = ItemESP:Checkbox({
+        IniFlag = "ESPItemEnabled",
+        Label = "Enable Item ESP",
+        Value = Settings.ItemESP.Enabled,
+        Callback = function(self, value)
+            Settings.ItemESP.Enabled = value
+            self:SetValue(value)
+        end
+    })
+    local itemBoxESPCheckbox = ItemESP:Checkbox({
+        IniFlag = "ESPItemBox",
+        Label = "Item Box ESP",
+        Value = Settings.ItemESP.Box,
+        Callback = function(self, value)
+            Settings.ItemESP.Box = value
+            self:SetValue(value)
+        end
+    })
+    local itemBoxStyleCombo = ItemESP:Combo({
+        IniFlag = "ESPItemBoxStyle",
+        Label = "Item Box Style",
+        Selected = Settings.ItemESP.BoxStyle,
+        Items = {"Default", "Modern"},
+        Callback = function(self, value)
+            Settings.ItemESP.BoxStyle = value
+            self:SetValue(value)
+        end
+    })
+    local itemNameESPCheckbox = ItemESP:Checkbox({
+        IniFlag = "ESPItemName",
+        Label = "Item Name ESP",
+        Value = Settings.ItemESP.Name,
+        Callback = function(self, value)
+            Settings.ItemESP.Name = value
+            self:SetValue(value)
+        end
+    })
+    local itemMaxDistanceSlider = ItemESP:SliderInt({
+        IniFlag = "ESPItemMaxDistance",
+        Label = "Item Max Distance",
+        Value = Settings.ItemESP.MaxDistance,
+        Minimum = 100,
+        Maximum = 5000,
+        Callback = function(self, value)
+            Settings.ItemESP.MaxDistance = value
+            self:SetValue(value)
+        end
+    })
 
     local RoomsSettings = VisualElements:TreeNode({ Title = "Rooms" })
-    RoomsSettings:Checkbox({ Label = "Room Enable", Value = false, Callback = function(_, value) Settings.RoomESP.Enabled = value end })
-    RoomsSettings:Checkbox({ Label = "Name", Value = false, Callback = function(_, value) Settings.RoomESP.Name = value end })
-    RoomsSettings:Checkbox({ Label = "Distance", Value = false, Callback = function(_, value) Settings.RoomESP.Distance = value end })
-    RoomsSettings:SliderInt({ Label = "Room Max Distance", Value = 1000, Minimum = 100, Maximum = 5000, Callback = function(_, value) Settings.RoomESP.MaxDistance = value end })
+    local roomESPEnableCheckbox = RoomsSettings:Checkbox({
+        IniFlag = "ESPRoomEnabled",
+        Label = "Room Enable",
+        Value = Settings.RoomESP.Enabled,
+        Callback = function(self, value)
+            Settings.RoomESP.Enabled = value
+            self:SetValue(value)
+        end
+    })
+    local roomNameCheckbox = RoomsSettings:Checkbox({
+        IniFlag = "ESPRoomName",
+        Label = "Name",
+        Value = Settings.RoomESP.Name,
+        Callback = function(self, value)
+            Settings.RoomESP.Name = value
+            self:SetValue(value)
+        end
+    })
+    local roomDistanceCheckbox = RoomsSettings:Checkbox({
+        IniFlag = "ESPRoomDistance",
+        Label = "Distance",
+        Value = Settings.RoomESP.Distance,
+        Callback = function(self, value)
+            Settings.RoomESP.Distance = value
+            self:SetValue(value)
+        end
+    })
+    local roomMaxDistanceSlider = RoomsSettings:SliderInt({
+        IniFlag = "ESPRoomMaxDistance",
+        Label = "Room Max Distance",
+        Value = Settings.RoomESP.MaxDistance,
+        Minimum = 100,
+        Maximum = 5000,
+        Callback = function(self, value)
+            Settings.RoomESP.MaxDistance = value
+            self:SetValue(value)
+        end
+    })
+
+    -- Функция для обновления всех UI-элементов
+    getgenv().UpdateESPUI = function()
+        espEnableCheckbox:SetValue(Settings.Enabled)
+        maxDistanceSlider:SetValue(Settings.MaxDistance)
+        teamCheckCheckbox:SetValue(Settings.TeamCheck)
+        boxESPCheckbox:SetValue(Settings.Box)
+        boxStyleCombo:SetValue(Settings.BoxStyle)
+        nameESPCheckbox:SetValue(Settings.Name)
+        distanceESPCheckbox:SetValue(Settings.Distance)
+        healthESPCheckbox:SetValue(Settings.Health)
+        weaponESPCheckbox:SetValue(Settings.Weapon)
+        roleESPCheckbox:SetValue(Settings.Role)
+        boxColorInput:SetValue(Settings.Colors.Box)
+        nameColorInput:SetValue(Settings.Colors.Name)
+        distanceColorInput:SetValue(Settings.Colors.Distance)
+        healthColorInput:SetValue(Settings.Colors.Health)
+        weaponColorInput:SetValue(Settings.Colors.Weapon)
+        roleColorInput:SetValue(Settings.Colors.Role)
+        itemESPEnableCheckbox:SetValue(Settings.ItemESP.Enabled)
+        itemBoxESPCheckbox:SetValue(Settings.ItemESP.Box)
+        itemBoxStyleCombo:SetValue(Settings.ItemESP.BoxStyle)
+        itemNameESPCheckbox:SetValue(Settings.ItemESP.Name)
+        itemMaxDistanceSlider:SetValue(Settings.ItemESP.MaxDistance)
+        roomESPEnableCheckbox:SetValue(Settings.RoomESP.Enabled)
+        roomNameCheckbox:SetValue(Settings.RoomESP.Name)
+        roomDistanceCheckbox:SetValue(Settings.RoomESP.Distance)
+        roomMaxDistanceSlider:SetValue(Settings.RoomESP.MaxDistance)
+    end
 end
