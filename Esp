@@ -29,7 +29,25 @@ end
 
 -- Получение роли игрока
 local function getPlayerRole(player)
-    return player.Team and player.Team.Name or "Unknown"
+    if not player then return "Unknown" end
+    local team = player.Team
+    return team and team.Name or "Unknown"
+end
+
+-- Функция получения номера SCP
+local function getScpNumber(player, workspace)
+    if not player then return nil end
+    local character = workspace:FindFirstChild(player.Name)
+    if not character then return nil end
+    for _, child in pairs(character:GetChildren()) do
+        if child:IsA("Script") then
+            if child.Name:match("(%d+)Client") or child.Name:match("(%d+)Server") then
+                local number = child.Name:match("(%d+)[Client|Server]")
+                return number
+            end
+        end
+    end
+    return nil
 end
 
 -- Отношения команд
@@ -240,7 +258,9 @@ local function MainESP(model, services, settings)
             local bottomOffset = 0
 
             if settings.Role and player then
-                Library.Role.Text = getPlayerRole(player)
+                local role = getPlayerRole(player)
+                local scpNumber = (role == "SCP" and getScpNumber(player, services.Workspace)) or nil
+                Library.Role.Text = scpNumber and ("SCP-" .. scpNumber) or role
                 Library.Role.Position = Vector2.new(centerXText, TL.Y - textSpacing - topOffset)
                 Library.Role.Color = settings.Colors.Role
                 Library.Role.Visible = true
