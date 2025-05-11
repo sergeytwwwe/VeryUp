@@ -258,6 +258,19 @@ resume(create(function()
     end)
 end))
 
+-- No Fall Damage
+local noFallDamageEnabled = false
+local oldFireServer
+local fallDamageRemote = game.ReplicatedStorage:WaitForChild("PVP"):WaitForChild("FallDamage")
+
+oldFireServer = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    if self == fallDamageRemote and method == "FireServer" and noFallDamageEnabled then
+        return
+    end
+    return oldFireServer(self, ...)
+end))
+
 -- UI для вкладки Misc
 local MiscHeader = MiscContent:CollapsingHeader({Title = "Movement"})
 local NoclipEnableCheckbox = MiscHeader:Checkbox({
@@ -317,6 +330,20 @@ MiscHeader:SliderInt({
         WalkspeedSettings.Speed = value
         if WalkspeedSettings.Enabled or (WalkspeedSettings.Mode == "Retention" and WalkspeedSettings.IsKeyHeld) then
             setWalkspeed(value)
+        end
+    end
+})
+
+local NoFallDamageCheckbox = MiscHeader:Checkbox({
+    IniFlag = "NoFallDamageEnabled",
+    Label = "No Fall Damage",
+    Value = noFallDamageEnabled,
+    Callback = function(self, value)
+        noFallDamageEnabled = value
+        if value then
+            showNotification("No Fall Damage enabled!", false)
+        else
+            showNotification("No Fall Damage disabled!", false)
         end
     end
 })
