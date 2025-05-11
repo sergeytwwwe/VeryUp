@@ -271,6 +271,66 @@ oldFireServer = hookmetamethod(game, "__namecall", newcclosure(function(self, ..
     return oldFireServer(self, ...)
 end))
 
+-- Player List
+local playerList = {}
+local textObjects = {}
+
+local function updatePlayerList()
+    -- Очистка старых текстов
+    for _, text in pairs(textObjects) do
+        text:Remove()
+    end
+    textObjects = {}
+
+    -- Получение игроков
+    local players = GetPlayers(Players)
+    table.sort(players, function(a, b)
+        local roleA = getPlayerRole(a)
+        local roleB = getPlayerRole(b)
+        local priorityA = ({["SCP"] = 1, ["Mobile Task Force"] = 2, ["Chaos Insurgency"] = 3, ["Class D"] = 4, ["Spectator"] = 5, ["Unknown"] = 6})[roleA] or 6
+        local priorityB = ({["SCP"] = 1, ["Mobile Task Force"] = 2, ["Chaos Insurgency"] = 3, ["Class D"] = 4, ["Spectator"] = 5, ["Unknown"] = 6})[roleB] or 6
+        return priorityA < priorityB
+    end)
+
+    local yOffset = 5
+    for _, player in pairs(players) do
+        local role = getPlayerRole(player)
+        local color = Color3.fromRGB(255, 255, 255) -- Default to white
+        if role == "SCP" then
+            color = Color3.fromRGB(255, 0, 0)
+        elseif role == "Mobile Task Force" then
+            color = Color3.fromRGB(0, 0, 255)
+        elseif role == "Chaos Insurgency" then
+            color = Color3.fromRGB(0, 255, 0)
+        elseif role == "Class D" then
+            color = Color3.fromRGB(255, 165, 0)
+        elseif role == "Spectator" or role == "Unknown" then
+            color = Color3.fromRGB(255, 255, 255)
+        end
+
+        local text = Drawing.new("Text")
+        text.Text = player.Name .. " (" .. role .. ")"
+        text.Color = color
+        text.Size = 16
+        text.Position = Vector2.new(Camera.ViewportSize.X - 200, yOffset)
+        text.Visible = true
+        text.Transparency = 1
+        text.ZIndex = 999
+        table.insert(textObjects, text)
+
+        yOffset = yOffset + 20
+    end
+end
+
+resume(create(function()
+    RenderStepped:Connect(function()
+        updatePlayerList()
+    end)
+end))
+
+Players.PlayerAdded:Connect(updatePlayerList)
+Players.PlayerRemoving:Connect(updatePlayerList)
+
 -- UI для вкладки Misc
 local MiscHeader = MiscContent:CollapsingHeader({Title = "Movement"})
 local NoclipEnableCheckbox = MiscHeader:Checkbox({
@@ -311,7 +371,7 @@ MiscHeader:Keybind({
     Label = "Bind",
     Value = WalkspeedSettings.Bind,
     Callback = function(self, value)
-        if value == SilentAimSettings.Bind or value == AimbotSettings.Bind then
+        if value == SilentAimSettings.Bind then
             showNotification("This bind is already used!", true)
             self:SetValue(WalkspeedSettings.Bind)
             return
