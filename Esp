@@ -732,4 +732,199 @@ return function(VisualContent, services)
             self:SetValue(value)
         end
     })
-    local
+    local boxCheckbox = GeneralSettings:Checkbox({
+        IniFlag = "ESPBox",
+        Label = "Box",
+        Value = Settings.Box,
+        Callback = function(self, value)
+            Settings.Box = value
+            self:SetValue(value)
+        end
+    })
+    local boxStyleCombo = GeneralSettings:Combo({
+        IniFlag = "ESPBoxStyle",
+        Label = "Box Style",
+        Selected = Settings.BoxStyle,
+        Items = {"Default", "Modern"},
+        Callback = function(self, value)
+            Settings.BoxStyle = value
+            self:SetValue(value)
+        end
+    })
+    local nameCheckbox = GeneralSettings:Checkbox({
+        IniFlag = "ESPName",
+        Label = "Name",
+        Value = Settings.Name,
+        Callback = function(self, value)
+            Settings.Name = value
+            self:SetValue(value)
+        end
+    })
+    local distanceCheckbox = GeneralSettings:Checkbox({
+        IniFlag = "ESPDistance",
+        Label = "Distance",
+        Value = Settings.Distance,
+        Callback = function(self, value)
+            Settings.Distance = value
+            self:SetValue(value)
+        end
+    })
+    local healthCheckbox = GeneralSettings:Checkbox({
+        IniFlag = "ESPHealth",
+        Label = "Health",
+        Value = Settings.Health,
+        Callback = function(self, value)
+            Settings.Health = value
+            self:SetValue(value)
+        end
+    })
+    local weaponCheckbox = GeneralSettings:Checkbox({
+        IniFlag = "ESPWeapon",
+        Label = "Weapon",
+        Value = Settings.Weapon,
+        Callback = function(self, value)
+            Settings.Weapon = value
+            self:SetValue(value)
+        end
+    })
+    local roleCheckbox = GeneralSettings:Checkbox({
+        IniFlag = "ESPRole",
+        Label = "Role",
+        Value = Settings.Role,
+        Callback = function(self, value)
+            Settings.Role = value
+            self:SetValue(value)
+        end
+    })
+    local teamCheckCheckbox = GeneralSettings:Checkbox({
+        IniFlag = "ESPTeamCheck",
+        Label = "Team Check",
+        Value = Settings.TeamCheck,
+        Callback = function(self, value)
+            Settings.TeamCheck = value
+            self:SetValue(value)
+        end
+    })
+
+    local ItemSettings = VisualContent:CollapsingHeader({ Title = "Item ESP Settings" })
+    if not ItemSettings then
+        warn("Failed to create ItemSettings CollapsingHeader")
+        return
+    end
+
+    local itemEnableCheckbox = ItemSettings:Checkbox({
+        IniFlag = "ItemESPEnabled",
+        Label = "Item ESP On",
+        Value = Settings.ItemESP.Enabled,
+        Callback = function(self, value)
+            Settings.ItemESP.Enabled = value
+            self:SetValue(value)
+        end
+    })
+    local itemMaxDistanceSlider = ItemSettings:SliderInt({
+        IniFlag = "ItemESPMaxDistance",
+        Label = "Max Distance",
+        Value = Settings.ItemESP.MaxDistance,
+        Minimum = 100,
+        Maximum = 5000,
+        Callback = function(self, value)
+            Settings.ItemESP.MaxDistance = value
+            self:SetValue(value)
+        end
+    })
+    local itemBoxCheckbox = ItemSettings:Checkbox({
+        IniFlag = "ItemESPBox",
+        Label = "Box",
+        Value = Settings.ItemESP.Box,
+        Callback = function(self, value)
+            Settings.ItemESP.Box = value
+            self:SetValue(value)
+        end
+    })
+    local itemBoxStyleCombo = ItemSettings:Combo({
+        IniFlag = "ItemESPBoxStyle",
+        Label = "Box Style",
+        Selected = Settings.ItemESP.BoxStyle,
+        Items = {"Default", "Modern"},
+        Callback = function(self, value)
+            Settings.ItemESP.BoxStyle = value
+            self:SetValue(value)
+        end
+    })
+    local itemNameCheckbox = ItemSettings:Checkbox({
+        IniFlag = "ItemESPName",
+        Label = "Name",
+        Value = Settings.ItemESP.Name,
+        Callback = function(self, value)
+            Settings.ItemESP.Name = value
+            self:SetValue(value)
+        end
+    })
+
+    local RoomSettings = VisualContent:CollapsingHeader({ Title = "Room ESP Settings" })
+    if not RoomSettings then
+        warn("Failed to create RoomSettings CollapsingHeader")
+        return
+    end
+
+    local roomEnableCheckbox = RoomSettings:Checkbox({
+        IniFlag = "RoomESPEnabled",
+        Label = "Room ESP On",
+        Value = Settings.RoomESP.Enabled,
+        Callback = function(self, value)
+            Settings.RoomESP.Enabled = value
+            self:SetValue(value)
+        end
+    })
+    local roomMaxDistanceSlider = RoomSettings:SliderInt({
+        IniFlag = "RoomESPMaxDistance",
+        Label = "Max Distance",
+        Value = Settings.RoomESP.MaxDistance,
+        Minimum = 100,
+        Maximum = 5000,
+        Callback = function(self, value)
+            Settings.RoomESP.MaxDistance = value
+            self:SetValue(value)
+        end
+    })
+    local roomNameCheckbox = RoomSettings:Checkbox({
+        IniFlag = "RoomESPName",
+        Label = "Name",
+        Value = Settings.RoomESP.Name,
+        Callback = function(self, value)
+            Settings.RoomESP.Name = value
+            self:SetValue(value)
+        end
+    })
+    local roomDistanceCheckbox = RoomSettings:Checkbox({
+        IniFlag = "RoomESPDistance",
+        Label = "Distance",
+        Value = Settings.RoomESP.Distance,
+        Callback = function(self, value)
+            Settings.RoomESP.Distance = value
+            self:SetValue(value)
+        end
+    })
+
+    getgenv().UpdateESPUI = function()
+        espEnableCheckbox:SetValue(Settings.Enabled)
+        maxDistanceSlider:SetValue(Settings.MaxDistance)
+        boxCheckbox:SetValue(Settings.Box)
+        boxStyleCombo:SetValue(Settings.BoxStyle)
+        nameCheckbox:SetValue(Settings.Name)
+        distanceCheckbox:SetValue(Settings.Distance)
+        healthCheckbox:SetValue(Settings.Health)
+        weaponCheckbox:SetValue(Settings.Weapon)
+        roleCheckbox:SetValue(Settings.Role)
+        teamCheckCheckbox:SetValue(Settings.TeamCheck)
+        itemEnableCheckbox:SetValue(Settings.ItemESP.Enabled)
+        itemMaxDistanceSlider:SetValue(Settings.ItemESP.MaxDistance)
+        itemBoxCheckbox:SetValue(Settings.ItemESP.Box)
+        itemBoxStyleCombo:SetValue(Settings.ItemESP.BoxStyle)
+        itemNameCheckbox:SetValue(Settings.ItemESP.Name)
+        roomEnableCheckbox:SetValue(Settings.RoomESP.Enabled)
+        roomMaxDistanceSlider:SetValue(Settings.RoomESP.MaxDistance)
+        roomNameCheckbox:SetValue(Settings.RoomESP.Name)
+        roomDistanceCheckbox:SetValue(Settings.RoomESP.Distance)
+    end
+end
