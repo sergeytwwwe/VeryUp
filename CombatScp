@@ -132,36 +132,30 @@ local function getMousePosition()
     return GetMouseLocation(UserInputService)
 end
 
--- Wall Check из Wallcheck.txt с защитой от рекурсии
+-- Новая логика Wall Check с использованием GetPartsObscuringTarget
 local function checkWall(Player, settings)
     local PlayerCharacter = Player.Character
     local LocalPlayerCharacter = LocalPlayer.Character
     if not (PlayerCharacter and LocalPlayerCharacter) then return true end
 
-    local targetHead = PlayerCharacter:FindFirstChild(settings.TargetPart)
-    if not targetHead then targetHead = PlayerCharacter:FindFirstChild("HumanoidRootPart") end
-    if not targetHead then return true end
+    local targetPart = PlayerCharacter:FindFirstChild(settings.TargetPart)
+    if not targetPart then targetPart = PlayerCharacter:FindFirstChild("HumanoidRootPart") end
+    if not targetPart then return true end
 
-    local origin = Camera.CFrame.Position
-    local direction = (targetHead.Position - origin).Unit * (targetHead.Position - origin).Magnitude
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterDescendantsInstances = {LocalPlayerCharacter, PlayerCharacter}
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    local castPoints = {targetPart.Position}
+    local ignoreList = {LocalPlayerCharacter, PlayerCharacter}
+    local obscuringParts = Camera:GetPartsObscuringTarget(castPoints, ignoreList)
 
-    -- Защита от рекурсии: временно отключаем хук Silent Aim
-    local oldHook = nil
-    if SilentAimSettings.Enabled or SilentAimSettings.IsKeyHeld then
-        oldHook = hookmetamethod(game, "__namecall", function(...) return oldNamecall(...) end)
+    -- Отладка: если нужно увидеть, какие объекты блокируют
+    --[[
+    if #obscuringParts > 0 then
+        for _, part in ipairs(obscuringParts) do
+            print("Wall Check blocked by: " .. part:GetFullName() .. " (CanCollide: " .. tostring(part.CanCollide) .. ")")
+        end
     end
+    --]]
 
-    local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
-
-    -- Восстанавливаем хук, если он был отключён
-    if oldHook then
-        hookmetamethod(game, "__namecall", oldHook)
-    end
-
-    return raycastResult and raycastResult.Instance ~= nil
+    return #obscuringParts > 0
 end
 
 -- getClosestPlayer из scp.txt
