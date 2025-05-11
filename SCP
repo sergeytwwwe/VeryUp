@@ -4,6 +4,7 @@ if getgenv().SCP_SCRIPT_INJECTED then
     return
 end
 getgenv().SCP_SCRIPT_INJECTED = true
+
 -- Инициализация скрипта
 if not game:IsLoaded() then 
     game.Loaded:Wait()
