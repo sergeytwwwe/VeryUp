@@ -1,3 +1,9 @@
+-- Проверка на повторный инжект
+if getgenv().SCP_SCRIPT_INJECTED then
+    warn("VeryUp arledy inject!")
+    return
+end
+getgenv().SCP_SCRIPT_INJECTED = true
 -- Инициализация скрипта
 if not game:IsLoaded() then 
     game.Loaded:Wait()
@@ -11,7 +17,7 @@ end
 loadstring(game:HttpGet("https://raw.githubusercontent.com/Pixeluted/adoniscries/main/Source.lua"))()
 
 local badFunctions = {"Crash", "HardCrash", "GPUCrash", "RAMCrash", "KillClient", "SetFPS"}
-for i,v in pairs(getgc()) do 
+for i, v in pairs(getgc()) do 
     if type(v) == "function" then
         local info = debug.getinfo(v)
         local functionName = info.name
@@ -68,20 +74,20 @@ local function getPlayerRole(player)
     return team and team.Name or "Unknown"
 end
 
--- Notifications
-local showNotification
-local notifSuccess, notifError = pcall(function()
-    showNotification = loadstring(game:HttpGet("https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/VeryUpNotifications"))()
-end)
-if not notifSuccess then
-    warn("Failed to load VeryUpNotifications: " .. notifError)
-    showNotification = function(message, isError)
-        if isError then
-            warn("[Notification] " .. message)
-        else
-            print("[Notification] " .. message)
+-- Функция получения номера SCP
+local function getScpNumber(player)
+    if not player then return nil end
+    local character = Workspace:FindFirstChild(player.Name)
+    if not character then return nil end
+    for _, child in pairs(character:GetChildren()) do
+        if child:IsA("Script") then
+            if child.Name:match("(%d+)Client") or child.Name:match("(%d+)Server") then
+                local number = child.Name:match("(%d+)[Client|Server]")
+                return number
+            end
         end
     end
+    return nil
 end
 
 -- Окно с вкладками
@@ -100,10 +106,7 @@ local espSuccess, espFuncOrError = pcall(function()
 end)
 if espSuccess and typeof(espFuncOrError) == "function" then
     local services = {Players = Players, RunService = RunService, Workspace = Workspace, LocalPlayer = LocalPlayer, Camera = Camera}
-    local success, err = pcall(function() espFuncOrError(VisualContent, services) end)
-    if not success then warn("Failed to initialize ESP: " .. err) else print("ESP loaded successfully") end
-else
-    warn("Failed to load ESP: " .. (espFuncOrError or "Unknown error"))
+    pcall(function() espFuncOrError(VisualContent, services) end)
 end
 
 -- Вкладка Combat
@@ -115,10 +118,7 @@ local combatSuccess, combatFuncOrError = pcall(function()
     return loadstring(game:HttpGet('https://raw.githubusercontent.com/sergeytwwwe/VeryUp/refs/heads/main/CombatScp'))()
 end)
 if combatSuccess and typeof(combatFuncOrError) == "function" then
-    local success, err = pcall(function() combatFuncOrError(CombatContent) end)
-    if not success then warn("Failed to initialize Combat: " .. err) else print("Combat loaded successfully") end
-else
-    warn("Failed to load Combat: " .. (combatFuncOrError or "Unknown error"))
+    pcall(function() combatFuncOrError(CombatContent) end)
 end
 
 -- Вкладка Misc
@@ -272,17 +272,60 @@ oldFireServer = hookmetamethod(game, "__namecall", newcclosure(function(self, ..
 end))
 
 -- Player List
-local playerList = {}
-local textObjects = {}
+local playerListEnabled = false
+local textObjects = {} -- Хранит {player = player, text = text}
+local lastUpdateTime = 0
+local updateInterval = 0.5 -- Задержка обновления списка
 
-local function updatePlayerList()
-    -- Очистка старых текстов
-    for _, text in pairs(textObjects) do
+local function animateText(text, state)
+    local transparency = state == "in" and 0 or 1
+    local scale = state == "in" and 0.5 or 1
+    local offsetY = state == "in" and 10 or 0
+    local shake = 0
+    local animationTime = 0.3
+    local startTime = tick()
+
+    local elapsed = 0
+    while elapsed < animationTime do
+        elapsed = tick() - startTime
+        local t = elapsed / animationTime
+        if state == "in" then
+            transparency = math.min(1, t * 4)
+            scale = math.min(1, t * 2 + 0.5)
+            offsetY = math.max(0, 10 - t * 20)
+        elseif state == "out" then
+            transparency = math.max(0, 1 - t * 4)
+            scale = math.max(0.5, 1 - t * 0.5)
+            offsetY = t * 10
+            shake = math.sin(t * 20) * 2
+        end
+        if text and text.Position then
+            text.Transparency = transparency
+            text.Size = 16 * scale
+            text.Position = Vector2.new(math.min(Camera.ViewportSize.X - 210, text.Position.X + shake), text.Position.Y - offsetY)
+        end
+        RunService.RenderStepped:Wait()
+    end
+    if state == "out" and text then
         text:Remove()
     end
-    textObjects = {}
+end
 
-    -- Получение игроков
+local function updatePlayerList()
+    if not playerListEnabled then
+        for _, obj in pairs(textObjects) do
+            if obj.text then
+                coroutine.wrap(animateText)(obj.text, "out")
+            end
+        end
+        textObjects = {}
+        return
+    end
+
+    local currentTime = tick()
+    if currentTime - lastUpdateTime < updateInterval then return end
+    lastUpdateTime = currentTime
+
     local players = GetPlayers(Players)
     table.sort(players, function(a, b)
         local roleA = getPlayerRole(a)
@@ -292,34 +335,81 @@ local function updatePlayerList()
         return priorityA < priorityB
     end)
 
+    -- Создаём новую таблицу для текстов
+    local newTextObjects = {}
     local yOffset = 5
+
     for _, player in pairs(players) do
         local role = getPlayerRole(player)
-        local color = Color3.fromRGB(255, 255, 255) -- Default to white
-        if role == "SCP" then
-            color = Color3.fromRGB(255, 0, 0)
-        elseif role == "Mobile Task Force" then
-            color = Color3.fromRGB(0, 0, 255)
-        elseif role == "Chaos Insurgency" then
-            color = Color3.fromRGB(0, 255, 0)
-        elseif role == "Class D" then
-            color = Color3.fromRGB(255, 165, 0)
-        elseif role == "Spectator" or role == "Unknown" then
-            color = Color3.fromRGB(255, 255, 255)
+        local scpNumber = (role == "SCP" and getScpNumber(player)) or nil
+        local displayText = scpNumber and (player.Name .. " (SCP-" .. scpNumber .. ")") or (player.Name .. " (" .. role .. ")")
+
+        -- Проверяем, есть ли этот игрок уже в списке
+        local existing = nil
+        for _, obj in pairs(textObjects) do
+            if obj.player == player then
+                existing = obj
+                break
+            end
         end
 
-        local text = Drawing.new("Text")
-        text.Text = player.Name .. " (" .. role .. ")"
-        text.Color = color
-        text.Size = 16
-        text.Position = Vector2.new(Camera.ViewportSize.X - 200, yOffset)
-        text.Visible = true
-        text.Transparency = 1
-        text.ZIndex = 999
-        table.insert(textObjects, text)
+        local text
+        if existing then
+            -- Игрок уже есть, обновляем позицию текста
+            text = existing.text
+            if text.Text ~= displayText then
+                -- Роль изменилась, обновляем текст и запускаем анимацию
+                text.Text = displayText
+                text.Color = Color3.fromRGB(255, 255, 255)
+                if role == "SCP" then text.Color = Color3.fromRGB(255, 0, 0)
+                elseif role == "Mobile Task Force" then text.Color = Color3.fromRGB(0, 0, 255)
+                elseif role == "Chaos Insurgency" then text.Color = Color3.fromRGB(0, 100, 0)
+                elseif role == "Class D" then text.Color = Color3.fromRGB(255, 165, 0)
+                elseif role == "Spectator" or role == "Unknown" then text.Color = Color3.fromRGB(255, 255, 255) end
+                coroutine.wrap(animateText)(text, "in")
+            end
+            text.Position = Vector2.new(Camera.ViewportSize.X - 200, yOffset)
+        else
+            -- Новый игрок, создаём текст и анимацию
+            text = Drawing.new("Text")
+            text.Text = displayText
+            text.Center = true
+            text.Color = Color3.fromRGB(255, 255, 255)
+            if role == "SCP" then text.Color = Color3.fromRGB(255, 0, 0)
+            elseif role == "Mobile Task Force" then text.Color = Color3.fromRGB(0, 0, 255)
+            elseif role == "Chaos Insurgency" then text.Color = Color3.fromRGB(0, 100, 0)
+            elseif role == "Class D" then text.Color = Color3.fromRGB(255, 165, 0)
+            elseif role == "Spectator" or role == "Unknown" then text.Color = Color3.fromRGB(255, 255, 255) end
+            text.Size = 16
+            text.Font = 3
+            text.Outline = true
+            text.OutlineColor = Color3.fromRGB(0, 0, 0)
+            text.Position = Vector2.new(Camera.ViewportSize.X - 200, yOffset)
+            text.Visible = true
+            text.Transparency = 0
+            text.ZIndex = 999
+            coroutine.wrap(animateText)(text, "in")
+        end
 
-        yOffset = yOffset + 20
+        table.insert(newTextObjects, {player = player, text = text})
+        yOffset = math.min(yOffset + 20, Camera.ViewportSize.Y - 50)
     end
+
+    -- Удаляем тексты игроков, которых больше нет
+    for _, obj in pairs(textObjects) do
+        local found = false
+        for _, player in pairs(players) do
+            if obj.player == player then
+                found = true
+                break
+            end
+        end
+        if not found and obj.text then
+            coroutine.wrap(animateText)(obj.text, "out")
+        end
+    end
+
+    textObjects = newTextObjects
 end
 
 resume(create(function()
@@ -328,8 +418,12 @@ resume(create(function()
     end)
 end))
 
-Players.PlayerAdded:Connect(updatePlayerList)
-Players.PlayerRemoving:Connect(updatePlayerList)
+Players.PlayerAdded:Connect(function()
+    updatePlayerList()
+end)
+Players.PlayerRemoving:Connect(function()
+    updatePlayerList()
+end)
 
 -- UI для вкладки Misc
 local MiscHeader = MiscContent:CollapsingHeader({Title = "Movement"})
@@ -372,7 +466,6 @@ MiscHeader:Keybind({
     Value = WalkspeedSettings.Bind,
     Callback = function(self, value)
         if value == SilentAimSettings.Bind then
-            showNotification("This bind is already used!", true)
             self:SetValue(WalkspeedSettings.Bind)
             return
         end
@@ -400,11 +493,16 @@ local NoFallDamageCheckbox = MiscHeader:Checkbox({
     Value = noFallDamageEnabled,
     Callback = function(self, value)
         noFallDamageEnabled = value
-        if value then
-            showNotification("No Fall Damage enabled!", false)
-        else
-            showNotification("No Fall Damage disabled!", false)
-        end
+    end
+})
+
+local PlayerListCheckbox = MiscHeader:Checkbox({
+    IniFlag = "PlayerListEnabled",
+    Label = "Player List",
+    Value = playerListEnabled,
+    Callback = function(self, value)
+        playerListEnabled = value
+        updatePlayerList()
     end
 })
 
@@ -413,10 +511,13 @@ local ConfigTab = TabsWindow:CreateTab({Name = "Config"})
 local ConfigContent = ConfigTab:ScrollingCanvas({Fill = true})
 
 -- Система конфигураций
-local baseFolder = "Title Here"
-local configFolder = baseFolder .. "/Config"
+local baseFolder = "VeryUp/SCP Demonstration"
+local configFolder = baseFolder .. "/config"
+local assetFolder = baseFolder .. "/asset"
+if not isfolder("VeryUp") then makefolder("VeryUp") end
 if not isfolder(baseFolder) then makefolder(baseFolder) end
 if not isfolder(configFolder) then makefolder(configFolder) end
+if not isfolder(assetFolder) then makefolder(assetFolder) end
 
 local configNameInput = ""
 local configList = {}
@@ -425,7 +526,6 @@ local configCombo = nil
 local function updateConfigList()
     local files = listfiles(configFolder)
     if not files then
-        warn("listfiles returned nil for folder: " .. configFolder)
         files = {}
     end
     configList = {}
@@ -435,15 +535,9 @@ local function updateConfigList()
             configName = configName:match("^(.+)%.ini$")
             if configName then
                 table.insert(configList, configName)
-                warn("Found config: " .. configName)
-            else
-                warn("Failed to extract config name from file: " .. file)
             end
-        else
-            warn("File does not match pattern: " .. file)
         end
     end
-    warn("Total configs found: " .. #configList)
     if configCombo then
         configCombo.Items = configList
         if #configList > 0 then
@@ -453,8 +547,6 @@ local function updateConfigList()
             configCombo.Selected = ""
             configNameInput = ""
         end
-    else
-        warn("configCombo is nil, cannot update Items")
     end
 end
 
@@ -476,21 +568,16 @@ ConfigHeader:Button({
     Text = "Create Config",
     Callback = function()
         if configNameInput == "" then
-            showNotification("Please enter a config name!", true)
             return
         end
         local configPath = configFolder .. "/" .. configNameInput .. ".ini"
         if isfile(configPath) then
-            showNotification("This config already exists!", true)
             return
         end
         local saveString = ReGui:DumpIni(true)
         if saveString then
             writefile(configPath, saveString)
             updateConfigList()
-            showNotification("Config '" .. configNameInput .. "' created successfully!", false)
-        else
-            showNotification("Failed to create config!", true)
         end
     end
 })
@@ -499,14 +586,12 @@ ConfigHeader:Button({
     Text = "Load Config",
     Callback = function()
         if configNameInput == "" then
-            showNotification("Please select a config!", true)
             return
         end
         local configPath = configFolder .. "/" .. configNameInput .. ".ini"
         if isfile(configPath) then
             local configData = readfile(configPath)
             ReGui:LoadIni(configData, true)
-            -- Применяем настройки после загрузки
             local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
             if WalkspeedSettings.Enabled or (WalkspeedSettings.Mode == "Retention" and WalkspeedSettings.IsKeyHeld) then
                 if hum then
@@ -518,9 +603,6 @@ ConfigHeader:Button({
             else
                 disableNoclip()
             end
-            showNotification("Config '" .. configNameInput .. "' loaded successfully!", false)
-        else
-            showNotification("Config '" .. configNameInput .. "' does not exist!", true)
         end
     end
 })
@@ -529,7 +611,6 @@ ConfigHeader:Button({
     Text = "Reload Config List",
     Callback = function()
         updateConfigList()
-        showNotification("Config list refreshed!", false)
     end
 })
 
@@ -547,16 +628,12 @@ ConfigHeader:Button({
     Text = "Delete Config",
     Callback = function()
         if configNameInput == "" then
-            showNotification("Please select a config!", true)
             return
         end
         local configPath = configFolder .. "/" .. configNameInput .. ".ini"
         if isfile(configPath) then
             delfile(configPath)
             updateConfigList()
-            showNotification("Config '" .. configNameInput .. "' deleted successfully!", false)
-        else
-            showNotification("Config '" .. configNameInput .. "' does not exist!", true)
         end
     end
 })
@@ -569,7 +646,6 @@ if isfile(configFolder .. "/default.ini") then
     configNameInput = "default"
     local configData = readfile(configFolder .. "/default.ini")
     ReGui:LoadIni(configData, true)
-    -- Применяем настройки после загрузки
     local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if WalkspeedSettings.Enabled or (WalkspeedSettings.Mode == "Retention" and WalkspeedSettings.IsKeyHeld) then
         if hum then
