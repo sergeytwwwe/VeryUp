@@ -132,7 +132,7 @@ local function getMousePosition()
     return GetMouseLocation(UserInputService)
 end
 
--- Новая логика Wall Check с использованием GetPartsObscuringTarget
+-- Wall Check с использованием GetPartsObscuringTarget
 local function checkWall(Player, settings)
     local PlayerCharacter = Player.Character
     local LocalPlayerCharacter = LocalPlayer.Character
@@ -146,7 +146,7 @@ local function checkWall(Player, settings)
     local ignoreList = {LocalPlayerCharacter, PlayerCharacter}
     local obscuringParts = Camera:GetPartsObscuringTarget(castPoints, ignoreList)
 
-    -- Отладка: если нужно увидеть, какие объекты блокируют
+    -- Отладка: раскомментируйте, если нужно увидеть, что блокирует
     --[[
     if #obscuringParts > 0 then
         for _, part in ipairs(obscuringParts) do
@@ -190,7 +190,7 @@ local function getClosestPlayer(settings)
     return Closest
 end
 
--- Silent Aim из scp.txt
+-- Silent Aim из scp.txt с улучшенной защитой от ошибок
 local ExpectedArguments = {
     Raycast = {
         ArgCountRequired = 3,
@@ -213,21 +213,34 @@ local function ValidateArguments(Args, RayMethod)
     return Matches >= RayMethod.ArgCountRequired
 end
 
+-- Флаг для предотвращения рекурсии
+local isProcessingSilentAim = false
+
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
+    -- Предотвращаем множественные вызовы
+    if isProcessingSilentAim then
+        return oldNamecall(...)
+    end
+
     local Method = getnamecallmethod()
     local Arguments = {...}
     local self = Arguments[1]
     local isActive = SilentAimSettings.Enabled or (SilentAimSettings.Mode == "Retention" and SilentAimSettings.IsKeyHeld)
+
     if isActive and self == Workspace and not checkcaller() then
         if Method == "Raycast" and SilentAimSettings.SilentAimMethod == "Raycast" then
             if ValidateArguments(Arguments, ExpectedArguments.Raycast) then
+                isProcessingSilentAim = true
                 local A_Origin = Arguments[2]
                 local HitPart = getClosestPlayer(SilentAimSettings)
                 if HitPart then
                     Arguments[3] = getDirection(A_Origin, HitPart.Position)
-                    return oldNamecall(unpack(Arguments))
+                    local result = oldNamecall(unpack(Arguments))
+                    isProcessingSilentAim = false
+                    return result
                 end
+                isProcessingSilentAim = false
             end
         end
     end
