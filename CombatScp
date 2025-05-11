@@ -1,4 +1,4 @@
-\-- Combat модуль
+-- Combat модуль
 local CombatContent = nil
 local initialized = false
 
