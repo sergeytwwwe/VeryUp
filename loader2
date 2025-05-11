@@ -5,7 +5,7 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
 if getgenv().VeryUpLoaderMainInjected then
-    warn("Error: Main Loader is already injected!")
+    --("Error: Main Loader is already injected!")
     return
 end
 getgenv().VeryUpLoaderMainInjected = true
@@ -174,10 +174,10 @@ local isToggledSkinwalkers = false
 local isToggledDemonstrationScp = false
 
 -- Отладка: выводим текущий GameId
-warn("Current GameId: " .. tostring(game.GameId))
+--("Current GameId: " .. tostring(game.GameId))
 
 if game.GameId == 5369242581 then
-    warn("Creating Dogs of War button for GameId 5369242581")
+    --("Creating Dogs of War button for GameId 5369242581")
     dogsOfWarButton = Instance.new("TextButton")
     dogsOfWarButton.Size = UDim2.new(0, 250, 0, 40)
     dogsOfWarButton.Position = UDim2.new(0, 15, 0, 70)
@@ -206,11 +206,11 @@ if game.GameId == 5369242581 then
         animateButton(dogsOfWarButton, false)
     end)
 else
-    warn("GameId 5369242581 not matched, Dogs of War button not created")
+    --("GameId 5369242581 not matched, Dogs of War button not created")
 end
 
 if game.GameId == 7355857660 then
-    warn("Creating Skinwalkers button for GameId 7355857660")
+    --("Creating Skinwalkers button for GameId 7355857660")
     skinwalkersButton = Instance.new("TextButton")
     skinwalkersButton.Size = UDim2.new(0, 250, 0, 40)
     skinwalkersButton.Position = UDim2.new(0, 15, 0, 70)
@@ -239,11 +239,11 @@ if game.GameId == 7355857660 then
         animateButton(skinwalkersButton, false)
     end)
 else
-    warn("GameId 7355857660 not matched, Skinwalkers button not created")
+    --("GameId 7355857660 not matched, Skinwalkers button not created")
 end
 
 if game.GameId == 2429681475 then
-    warn("Creating Demonstration Scp button for GameId 2429681475")
+    --("Creating Demonstration Scp button for GameId 2429681475")
     demonstrationScpButton = Instance.new("TextButton")
     demonstrationScpButton.Size = UDim2.new(0, 250, 0, 40)
     demonstrationScpButton.Position = UDim2.new(0, 15, 0, 70)
@@ -272,7 +272,7 @@ if game.GameId == 2429681475 then
         animateButton(demonstrationScpButton, false)
     end)
 else
-    warn("GameId 2429681475 not matched, Demonstration Scp button not created")
+    --("GameId 2429681475 not matched, Demonstration Scp button not created")
 end
 
 local verticalSeparator = Instance.new("Frame")
@@ -354,7 +354,7 @@ changelogText.TextWrapped = true
 changelogText.Parent = changelogFrame
 
 local function animateAppearance(object)
-    warn("Animating appearance for object: " .. tostring(object.Name))
+    --("Animating appearance for object: " .. tostring(object.Name))
     object.Visible = true
     object.BackgroundTransparency = 1
     local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -363,27 +363,27 @@ local function animateAppearance(object)
 end
 
 local function animateDisappearance(object, callback)
-    warn("Animating disappearance for object: " .. tostring(object.Name))
+    --("Animating disappearance for object: " .. tostring(object.Name))
     local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
     local tween = TweenService:Create(object, tweenInfo, {BackgroundTransparency = 1})
     tween:Play()
     tween.Completed:Connect(function()
         object.Visible = false
-        warn("Object " .. tostring(object.Name) .. " is now invisible")
+        --("Object " .. tostring(object.Name) .. " is now invisible")
         if callback then callback() end
     end)
 end
 
 local function toggleGameButton(button, toggleState, changelogTextContent)
-    warn("Toggling button: " .. tostring(button.Text) .. ", Current state: " .. tostring(toggleState))
+    --("Toggling button: " .. tostring(button.Text) .. ", Current state: " .. tostring(toggleState))
     toggleState = not toggleState
     if toggleState then
-        warn("Showing loadButton and changelogFrame")
+        --("Showing loadButton and changelogFrame")
         animateAppearance(loadButton)
         animateAppearance(changelogFrame)
         changelogText.Text = changelogTextContent
     else
-        warn("Hiding loadButton and changelogFrame")
+        --("Hiding loadButton and changelogFrame")
         animateDisappearance(loadButton)
         animateDisappearance(changelogFrame)
     end
@@ -391,12 +391,12 @@ local function toggleGameButton(button, toggleState, changelogTextContent)
     local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     local strokeTween = TweenService:Create(button.UIStroke, tweenInfo, {Transparency = strokeTransparency})
     strokeTween:Play()
-    warn("New toggle state for " .. tostring(button.Text) .. ": " .. tostring(toggleState))
+    --("New toggle state for " .. tostring(button.Text) .. ": " .. tostring(toggleState))
     return toggleState
 end
 
 local function loadScript()
-    warn("Load script triggered")
+    --("Load script triggered")
     local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
     local tween = TweenService:Create(mainFrame, tweenInfo, {BackgroundTransparency = 1, Size = UDim2.new(0, 0, 0, 0)})
     tween:Play()
@@ -424,7 +424,7 @@ local function loadScript()
     end
 
     if scriptUrl then
-        warn("Loading script from URL: " .. scriptUrl)
+        --("Loading script from URL: " .. scriptUrl)
         local loaderSuccess, loaderError = pcall(function()
             local script = loadstring(game:HttpGet(scriptUrl))()
             if script then
@@ -436,30 +436,30 @@ local function loadScript()
                         updateLoader()
                         hideLoader()
                     else
-                        warn("updateLoader or hideLoader is nil")
+                        --("updateLoader or hideLoader is nil")
                     end
                 else
-                    warn("Loaded script is not a function or table")
+                    --("Loaded script is not a function or table")
                 end
             else
-                warn("Failed to load script: " .. tostring(loaderError))
+                --("Failed to load script: " .. tostring(loaderError))
             end
         end)
 
         if not loaderSuccess then
-            warn("Failed to execute script: " .. tostring(loaderError))
+            --("Failed to execute script: " .. tostring(loaderError))
         end
     else
-        warn("No script URL selected")
+        --("No script URL selected")
     end
 end
 
 if dogsOfWarButton then
     dogsOfWarButton.Activated:Connect(function()
-        warn("Dogs of War button clicked")
+        --("Dogs of War button clicked")
         isToggledDogsOfWar = toggleGameButton(dogsOfWarButton, isToggledDogsOfWar, "Last Update: Beta Release 0.1\n- Added ESP\n- Improved UI\n- Next Update: v1.0")
         if not isToggledDogsOfWar then
-            warn("Reconnecting loadButton.Activated for Dogs of War")
+            --("Reconnecting loadButton.Activated for Dogs of War")
             loadButton.Activated:Connect(loadScript)
         end
     end)
@@ -467,27 +467,27 @@ end
 
 if skinwalkersButton then
     skinwalkersButton.Activated:Connect(function()
-        warn("Skinwalkers button clicked")
+        --("Skinwalkers button clicked")
         isToggledSkinwalkers = toggleGameButton(skinwalkersButton, isToggledSkinwalkers, "Last Update: Beta v0.1")
         if not isToggledSkinwalkers then
-            warn("Reconnecting loadButton.Activated for Skinwalkers")
+            --("Reconnecting loadButton.Activated for Skinwalkers")
             loadButton.Activated:Connect(loadScript)
         end
     end)
 end
 
 if demonstrationScpButton then
-    warn("Demonstration Scp button exists, connecting Activated event")
+    --("Demonstration Scp button exists, connecting Activated event")
     demonstrationScpButton.Activated:Connect(function()
-        warn("Demonstration Scp button clicked")
+        --("Demonstration Scp button clicked")
         isToggledDemonstrationScp = toggleGameButton(demonstrationScpButton, isToggledDemonstrationScp, "Release v 0.1")
         if not isToggledDemonstrationScp then
-            warn("Reconnecting loadButton.Activated for Demonstration Scp")
+            --("Reconnecting loadButton.Activated for Demonstration Scp")
             loadButton.Activated:Connect(loadScript)
         end
     end)
 else
-    warn("Demonstration Scp button does not exist!")
+    --("Demonstration Scp button does not exist!")
 end
 
 loadButton.Activated:Connect(loadScript)
@@ -518,7 +518,7 @@ local function checkForUpdate()
             updateCorner.Parent = updateLabel
         end
     else
-        warn("Failed to check for injector update: " .. tostring(response))
+        --("Failed to check for injector update: " .. tostring(response))
     end
 end
 
