@@ -132,8 +132,16 @@ local function getMousePosition()
     return GetMouseLocation(UserInputService)
 end
 
--- Wall Check с использованием GetPartsObscuringTarget
+-- Флаг для предотвращения рекурсии в Wall Check
+local isCheckingWall = false
+
+-- Wall Check с Raycast, как в Wallcheck.txt
 local function checkWall(Player, settings)
+    -- Предотвращаем рекурсию
+    if isCheckingWall then
+        return true
+    end
+
     local PlayerCharacter = Player.Character
     local LocalPlayerCharacter = LocalPlayer.Character
     if not (PlayerCharacter and LocalPlayerCharacter) then return true end
@@ -142,20 +150,28 @@ local function checkWall(Player, settings)
     if not targetPart then targetPart = PlayerCharacter:FindFirstChild("HumanoidRootPart") end
     if not targetPart then return true end
 
-    local castPoints = {targetPart.Position}
-    local ignoreList = {LocalPlayerCharacter, PlayerCharacter}
-    local obscuringParts = Camera:GetPartsObscuringTarget(castPoints, ignoreList)
+    isCheckingWall = true
+
+    local origin = Camera.CFrame.Position
+    local direction = (targetPart.Position - origin).Unit * (targetPart.Position - origin).Magnitude
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {LocalPlayerCharacter, PlayerCharacter}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+    local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
 
     -- Отладка: раскомментируйте, если нужно увидеть, что блокирует
     --[[
-    if #obscuringParts > 0 then
-        for _, part in ipairs(obscuringParts) do
-            print("Wall Check blocked by: " .. part:GetFullName() .. " (CanCollide: " .. tostring(part.CanCollide) .. ")")
-        end
+    if raycastResult then
+        print("Wall Check hit: " .. tostring(raycastResult.Instance) .. " (CanCollide: " .. tostring(raycastResult.Instance and raycastResult.Instance.CanCollide) .. ")")
+    else
+        print("Wall Check: No obstruction")
     end
     --]]
 
-    return #obscuringParts > 0
+    isCheckingWall = false
+
+    return raycastResult and raycastResult.Instance ~= nil
 end
 
 -- getClosestPlayer из scp.txt
@@ -190,7 +206,7 @@ local function getClosestPlayer(settings)
     return Closest
 end
 
--- Silent Aim из scp.txt с улучшенной защитой от ошибок
+-- Silent Aim из scp.txt с защитой от рекурсии
 local ExpectedArguments = {
     Raycast = {
         ArgCountRequired = 3,
@@ -213,12 +229,17 @@ local function ValidateArguments(Args, RayMethod)
     return Matches >= RayMethod.ArgCountRequired
 end
 
--- Флаг для предотвращения рекурсии
+-- Флаг для предотвращения рекурсии в Silent Aim
 local isProcessingSilentAim = false
 
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
-    -- Предотвращаем множественные вызовы
+    -- Не вмешиваемся в вызовы Raycast из checkWall
+    if isCheckingWall then
+        return oldNamecall(...)
+    end
+
+    -- Предотвращаем множественные вызовы Silent Aim
     if isProcessingSilentAim then
         return oldNamecall(...)
     end
