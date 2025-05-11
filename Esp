@@ -374,7 +374,8 @@ local function MainESP(model, services, settings)
             end
         end)
     end
-    coroutine.wrap(Updater)()
+    local co = coroutine.create(Updater)
+    coroutine.resume(co)
 end
 
 -- Основная функция Item ESP
@@ -538,7 +539,8 @@ local function MainItemESP(item, services, settings)
             end
         end)
     end
-    coroutine.wrap(Updater)()
+    local co = coroutine.create(Updater)
+    coroutine.resume(co)
 end
 
 -- Основная функция Room ESP
@@ -618,7 +620,8 @@ local function MainRoomESP(roomName, roomData, services, settings)
             end
         end)
     end
-    coroutine.wrap(Updater)()
+    local co = coroutine.create(Updater)
+    coroutine.resume(co)
 end
 
 -- Инициализация ESP для игроков
@@ -626,10 +629,12 @@ local function initPlayerESP(services, settings)
     for _, player in pairs(services.Players:GetPlayers()) do
         if player ~= services.LocalPlayer then
             if player.Character then
-                coroutine.wrap(MainESP)(player.Character, services, settings)
+                local co = coroutine.create(function() MainESP(player.Character, services, settings) end)
+                coroutine.resume(co)
             end
             player.CharacterAdded:Connect(function(character)
-                coroutine.wrap(MainESP)(character, services, settings)
+                local co = coroutine.create(function() MainESP(character, services, settings) end)
+                coroutine.resume(co)
             end)
         end
     end
@@ -637,7 +642,8 @@ local function initPlayerESP(services, settings)
     services.Players.PlayerAdded:Connect(function(player)
         if player == services.LocalPlayer then return end
         player.CharacterAdded:Connect(function(character)
-            coroutine.wrap(MainESP)(character, services, settings)
+            local co = coroutine.create(function() MainESP(character, services, settings) end)
+            coroutine.resume(co)
         end)
     end)
 end
@@ -646,13 +652,15 @@ end
 local function initItemESP(services, settings)
     for _, item in pairs(services.Workspace:GetDescendants()) do
         if item:IsA("Tool") and item.Parent == services.Workspace then
-            coroutine.wrap(MainItemESP)(item, services, settings)
+            local co = coroutine.create(function() MainItemESP(item, services, settings) end)
+            coroutine.resume(co)
         end
     end
 
     services.Workspace.DescendantAdded:Connect(function(descendant)
         if descendant:IsA("Tool") and descendant.Parent == services.Workspace then
-            coroutine.wrap(MainItemESP)(descendant, services, settings)
+            local co = coroutine.create(function() MainItemESP(descendant, services, settings) end)
+            coroutine.resume(co)
         end
     end)
 end
@@ -660,7 +668,8 @@ end
 -- Инициализация Room ESP
 local function initRoomESP(services, settings)
     for roomName, roomData in pairs(settings.RoomESP.Rooms) do
-        coroutine.wrap(MainRoomESP)(roomName, roomData, services, settings)
+        local co = coroutine.create(function() MainRoomESP(roomName, roomData, services, settings) end)
+        coroutine.resume(co)
     end
 
     services.Workspace.DescendantAdded:Connect(function(descendant)
@@ -677,7 +686,8 @@ local function initRoomESP(services, settings)
                 end
             end
             if match and current == descendant then
-                coroutine.wrap(MainRoomESP)(roomName, roomData, services, settings)
+                local co = coroutine.create(function() MainRoomESP(roomName, roomData, services, settings) end)
+                coroutine.resume(co)
             end
         end
     end)
@@ -685,17 +695,17 @@ end
 
 -- Основная функция, которая будет вызвана из loader.lua
 return function(VisualContent, services)
+    if not VisualContent or not VisualContent.CollapsingHeader then
+        warn("VisualContent is invalid or does not support CollapsingHeader")
+        return
+    end
+
     -- Инициализация всех типов ESP
     initPlayerESP(services, Settings)
     initItemESP(services, Settings)
     initRoomESP(services, Settings)
 
     -- UI Elements
-    if not VisualContent or not VisualContent.CollapsingHeader then
-        warn("VisualContent is invalid or does not support CollapsingHeader")
-        return
-    end
-
     local GeneralSettings = VisualContent:CollapsingHeader({ Title = "General Settings" })
     if not GeneralSettings then
         warn("Failed to create GeneralSettings CollapsingHeader")
@@ -722,254 +732,4 @@ return function(VisualContent, services)
             self:SetValue(value)
         end
     })
-    local teamCheckCheckbox = GeneralSettings:Checkbox({
-        IniFlag = "ESPTeamCheck",
-        Label = "Team Check",
-        Value = Settings.TeamCheck,
-        Callback = function(self, value)
-            Settings.TeamCheck = value
-            self:SetValue(value)
-        end
-    })
-
-    local VisualElements = VisualContent:CollapsingHeader({ Title = "Visual Elements" })
-    local boxESPCheckbox = VisualElements:Checkbox({
-        IniFlag = "ESPBox",
-        Label = "Box ESP",
-        Value = Settings.Box,
-        Callback = function(self, value)
-            Settings.Box = value
-            self:SetValue(value)
-        end
-    })
-    local boxStyleCombo = VisualElements:Combo({
-        IniFlag = "ESPBoxStyle",
-        Label = "Box Style",
-        Selected = Settings.BoxStyle,
-        Items = {"Default", "Modern"},
-        Callback = function(self, value)
-            Settings.BoxStyle = value
-            self:SetValue(value)
-        end
-    })
-    local nameESPCheckbox = VisualElements:Checkbox({
-        IniFlag = "ESPName",
-        Label = "Name ESP",
-        Value = Settings.Name,
-        Callback = function(self, value)
-            Settings.Name = value
-            self:SetValue(value)
-        end
-    })
-    local distanceESPCheckbox = VisualElements:Checkbox({
-        IniFlag = "ESPDistance",
-        Label = "Distance ESP",
-        Value = Settings.Distance,
-        Callback = function(self, value)
-            Settings.Distance = value
-            self:SetValue(value)
-        end
-    })
-    local healthESPCheckbox = VisualElements:Checkbox({
-        IniFlag = "ESPHealth",
-        Label = "Health ESP",
-        Value = Settings.Health,
-        Callback = function(self, value)
-            Settings.Health = value
-            self:SetValue(value)
-        end
-    })
-    local weaponESPCheckbox = VisualElements:Checkbox({
-        IniFlag = "ESPWeapon",
-        Label = "Weapon ESP",
-        Value = Settings.Weapon,
-        Callback = function(self, value)
-            Settings.Weapon = value
-            self:SetValue(value)
-        end
-    })
-    local roleESPCheckbox = VisualElements:Checkbox({
-        IniFlag = "ESPRole",
-        Label = "Role ESP",
-        Value = Settings.Role,
-        Callback = function(self, value)
-            Settings.Role = value
-            self:SetValue(value)
-        end
-    })
-
-    local ColorsSettings = VisualElements:TreeNode({ Title = "Colors" })
-    local boxColorInput = ColorsSettings:InputColor3({
-        IniFlag = "ESPBoxColor",
-        Label = "Box Color",
-        Value = Settings.Colors.Box,
-        Callback = function(self, value)
-            Settings.Colors.Box = value
-            self:SetValue(value)
-        end
-    })
-    local nameColorInput = ColorsSettings:InputColor3({
-        IniFlag = "ESPNameColor",
-        Label = "Name Color",
-        Value = Settings.Colors.Name,
-        Callback = function(self, value)
-            Settings.Colors.Name = value
-            self:SetValue(value)
-        end
-    })
-    local distanceColorInput = ColorsSettings:InputColor3({
-        IniFlag = "ESPDistanceColor",
-        Label = "Distance Color",
-        Value = Settings.Colors.Distance,
-        Callback = function(self, value)
-            Settings.Colors.Distance = value
-            self:SetValue(value)
-        end
-    })
-    local healthColorInput = ColorsSettings:InputColor3({
-        IniFlag = "ESPHealthColor",
-        Label = "Health Color",
-        Value = Settings.Colors.Health,
-        Callback = function(self, value)
-            Settings.Colors.Health = value
-            self:SetValue(value)
-        end
-    })
-    local weaponColorInput = ColorsSettings:InputColor3({
-        IniFlag = "ESPWeaponColor",
-        Label = "Weapon Color",
-        Value = Settings.Colors.Weapon,
-        Callback = function(self, value)
-            Settings.Colors.Weapon = value
-            self:SetValue(value)
-        end
-    })
-    local roleColorInput = ColorsSettings:InputColor3({
-        IniFlag = "ESPRoleColor",
-        Label = "Role Color",
-        Value = Settings.Colors.Role,
-        Callback = function(self, value)
-            Settings.Colors.Role = value
-            self:SetValue(value)
-        end
-    })
-
-    local ItemESP = VisualElements:TreeNode({ Title = "Item ESP" })
-    local itemESPEnableCheckbox = ItemESP:Checkbox({
-        IniFlag = "ESPItemEnabled",
-        Label = "Enable Item ESP",
-        Value = Settings.ItemESP.Enabled,
-        Callback = function(self, value)
-            Settings.ItemESP.Enabled = value
-            self:SetValue(value)
-        end
-    })
-    local itemBoxESPCheckbox = ItemESP:Checkbox({
-        IniFlag = "ESPItemBox",
-        Label = "Item Box ESP",
-        Value = Settings.ItemESP.Box,
-        Callback = function(self, value)
-            Settings.ItemESP.Box = value
-            self:SetValue(value)
-        end
-    })
-    local itemBoxStyleCombo = ItemESP:Combo({
-        IniFlag = "ESPItemBoxStyle",
-        Label = "Item Box Style",
-        Selected = Settings.ItemESP.BoxStyle,
-        Items = {"Default", "Modern"},
-        Callback = function(self, value)
-            Settings.ItemESP.BoxStyle = value
-            self:SetValue(value)
-        end
-    })
-    local itemNameESPCheckbox = ItemESP:Checkbox({
-        IniFlag = "ESPItemName",
-        Label = "Item Name ESP",
-        Value = Settings.ItemESP.Name,
-        Callback = function(self, value)
-            Settings.ItemESP.Name = value
-            self:SetValue(value)
-        end
-    })
-    local itemMaxDistanceSlider = ItemESP:SliderInt({
-        IniFlag = "ESPItemMaxDistance",
-        Label = "Item Max Distance",
-        Value = Settings.ItemESP.MaxDistance,
-        Minimum = 100,
-        Maximum = 5000,
-        Callback = function(self, value)
-            Settings.ItemESP.MaxDistance = value
-            self:SetValue(value)
-        end
-    })
-
-    local RoomsSettings = VisualElements:TreeNode({ Title = "Rooms" })
-    local roomESPEnableCheckbox = RoomsSettings:Checkbox({
-        IniFlag = "ESPRoomEnabled",
-        Label = "Room Enable",
-        Value = Settings.RoomESP.Enabled,
-        Callback = function(self, value)
-            Settings.RoomESP.Enabled = value
-            self:SetValue(value)
-        end
-    })
-    local roomNameCheckbox = RoomsSettings:Checkbox({
-        IniFlag = "ESPRoomName",
-        Label = "Name",
-        Value = Settings.RoomESP.Name,
-        Callback = function(self, value)
-            Settings.RoomESP.Name = value
-            self:SetValue(value)
-        end
-    })
-    local roomDistanceCheckbox = RoomsSettings:Checkbox({
-        IniFlag = "ESPRoomDistance",
-        Label = "Distance",
-        Value = Settings.RoomESP.Distance,
-        Callback = function(self, value)
-            Settings.RoomESP.Distance = value
-            self:SetValue(value)
-        end
-    })
-    local roomMaxDistanceSlider = RoomsSettings:SliderInt({
-        IniFlag = "ESPRoomMaxDistance",
-        Label = "Room Max Distance",
-        Value = Settings.RoomESP.MaxDistance,
-        Minimum = 100,
-        Maximum = 5000,
-        Callback = function(self, value)
-            Settings.RoomESP.MaxDistance = value
-            self:SetValue(value)
-        end
-    })
-
-    -- Функция для обновления всех UI-элементов
-    getgenv().UpdateESPUI = function()
-        espEnableCheckbox:SetValue(Settings.Enabled)
-        maxDistanceSlider:SetValue(Settings.MaxDistance)
-        teamCheckCheckbox:SetValue(Settings.TeamCheck)
-        boxESPCheckbox:SetValue(Settings.Box)
-        boxStyleCombo:SetValue(Settings.BoxStyle)
-        nameESPCheckbox:SetValue(Settings.Name)
-        distanceESPCheckbox:SetValue(Settings.Distance)
-        healthESPCheckbox:SetValue(Settings.Health)
-        weaponESPCheckbox:SetValue(Settings.Weapon)
-        roleESPCheckbox:SetValue(Settings.Role)
-        boxColorInput:SetValue(Settings.Colors.Box)
-        nameColorInput:SetValue(Settings.Colors.Name)
-        distanceColorInput:SetValue(Settings.Colors.Distance)
-        healthColorInput:SetValue(Settings.Colors.Health)
-        weaponColorInput:SetValue(Settings.Colors.Weapon)
-        roleColorInput:SetValue(Settings.Colors.Role)
-        itemESPEnableCheckbox:SetValue(Settings.ItemESP.Enabled)
-        itemBoxESPCheckbox:SetValue(Settings.ItemESP.Box)
-        itemBoxStyleCombo:SetValue(Settings.ItemESP.BoxStyle)
-        itemNameESPCheckbox:SetValue(Settings.ItemESP.Name)
-        itemMaxDistanceSlider:SetValue(Settings.ItemESP.MaxDistance)
-        roomESPEnableCheckbox:SetValue(Settings.RoomESP.Enabled)
-        roomNameCheckbox:SetValue(Settings.RoomESP.Name)
-        roomDistanceCheckbox:SetValue(Settings.RoomESP.Distance)
-        roomMaxDistanceSlider:SetValue(Settings.RoomESP.MaxDistance)
-    end
-end
+    local
