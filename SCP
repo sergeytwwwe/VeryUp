@@ -93,7 +93,7 @@ end
 
 -- Окно с вкладками
 local TabsWindow = ReGui:TabsWindow({
-    Title = "ESP Loader",
+    Title = "VeryUp",
     Size = UDim2.fromOffset(400, 400)
 }):Center()
 
