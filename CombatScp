@@ -1,4 +1,4 @@
--- Combat модуль
+\-- Combat модуль
 local CombatContent = nil
 local initialized = false
 
@@ -139,12 +139,9 @@ local function IsPlayerVisible(Player, settings)
     local TargetPart = PlayerCharacter:FindFirstChild(settings.TargetPart)
     if not TargetPart then TargetPart = PlayerCharacter:FindFirstChild("HumanoidRootPart") end
     if not TargetPart then return false end
-    local ray = Workspace:Raycast(Camera.CFrame.Position, (TargetPart.Position - Camera.CFrame.Position).Unit * 1000)
-    if ray and ray.Instance then
-        local obstructingPart = ray.Instance
-        if obstructingPart and obstructingPart ~= TargetPart.Parent and obstructingPart.CanCollide then
-            return false
-        end
+    local ray = Workspace:Raycast(Camera.CFrame.Position, (TargetPart.Position - Camera.CFrame.Position).Unit * 1000, RaycastParams.new())
+    if ray and ray.Instance and ray.Instance.CanCollide and ray.Instance ~= TargetPart and ray.Instance.Parent ~= PlayerCharacter then
+        return false
     end
     return true
 end
