@@ -170,16 +170,15 @@ local function getClosestPlayer(settings)
     return Closest
 end
 
--- Альтернативная реализация Silent Aim без hookmetamethod
+-- Альтернативная реализация Silent Aim через Tool.Activated
 local function simulateRaycast(origin, direction, targetPart)
     local raycastParams = RaycastParams.new()
     raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
 
-    -- Сначала проверяем, есть ли препятствия до цели
+    -- Проверяем, есть ли препятствия до цели
     local raycastResult = Workspace:Raycast(origin, (targetPart.Position - origin), raycastParams)
     if raycastResult then
-        -- Если препятствие есть, но это не цель, возвращаем nil (не попали)
         if raycastResult.Instance:IsDescendantOf(targetPart.Parent) then
             return raycastResult
         end
@@ -195,28 +194,63 @@ local function simulateRaycast(origin, direction, targetPart)
     }
 end
 
--- Отслеживание выстрелов через нажатие мыши
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        local isActive = SilentAimSettings.Enabled or (SilentAimSettings.Mode == "Retention" and SilentAimSettings.IsKeyHeld)
-        if isActive then
+-- Подключение к Tool.Activated
+local function setupToolSilentAim(character)
+    if not character then return end
+
+    local function onToolEquipped(tool)
+        if not tool:IsA("Tool") then return end
+        showNotification("Tool equipped: " .. tool.Name, false)
+
+        tool.Activated:Connect(function()
+            local isActive = SilentAimSettings.Enabled or (SilentAimSettings.Mode == "Retention" and SilentAimSettings.IsKeyHeld)
+            if not isActive then return end
+
             local closestPart = getClosestPlayer(SilentAimSettings)
-            if closestPart then
-                -- Симулируем raycast на цель
-                local origin = Camera.CFrame.Position
-                local direction = getDirection(origin, closestPart.Position)
-                local raycastResult = simulateRaycast(origin, direction, closestPart)
-                if raycastResult then
-                    -- Здесь можно отправить данные о попадании на сервер
-                    -- Для SCP Demonstration это может быть вызов функции выстрела
-                    -- Мы просто уведомим, что Silent Aim сработал
-                    showNotification("Silent Aim hit: " .. closestPart.Parent.Name, false)
-                end
+            if not closestPart then
+                showNotification("No target found for Silent Aim", true)
+                return
             end
+
+            local origin = Camera.CFrame.Position
+            local direction = getDirection(origin, closestPart.Position)
+            local raycastResult = simulateRaycast(origin, direction, closestPart)
+            if raycastResult then
+                showNotification("Silent Aim hit: " .. closestPart.Parent.Name, false)
+                -- В SCP Demonstration нужно найти RemoteEvent для выстрела
+                local remote = tool:FindFirstChildWhichIsA("RemoteEvent")
+                if remote then
+                    remote:FireServer(closestPart.Position, (closestPart.Position - origin).Unit)
+                    showNotification("Fired RemoteEvent for hit", false)
+                else
+                    showNotification("No RemoteEvent found in tool", true)
+                end
+            else
+                showNotification("Silent Aim raycast failed", true)
+            end
+        end)
+    end
+
+    for _, child in pairs(character:GetChildren()) do
+        if child:IsA("Tool") then
+            onToolEquipped(child)
         end
     end
+
+    character.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") then
+            onToolEquipped(child)
+        end
+    end)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(character)
+    setupToolSilentAim(character)
 end)
+
+if LocalPlayer.Character then
+    setupToolSilentAim(LocalPlayer.Character)
+end
 
 -- Инициализация UI
 local SilentAimEnableCheckbox
