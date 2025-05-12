@@ -561,7 +561,7 @@ local function MainRoomESP(roomName, roomData, services, settings)
     }
 
     local lastUpdate = 0
-    local updateInterval = 0.2 -- Обновляем каждые 0.2 секунды
+    local updateInterval = 0.02 -- Обновляем каждые 0.2 секунды
 
     local function Updater()
         local connection
