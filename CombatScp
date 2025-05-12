@@ -116,7 +116,10 @@ local function checkWall(Player, settings)
     if not targetPart then targetPart = PlayerCharacter:FindFirstChild("HumanoidRootPart") end
     if not targetPart then return true end
 
-    local origin = Camera.CFrame.Position
+    local origin = LocalPlayerCharacter:FindFirstChild("HumanoidRootPart")
+    if not origin then return true end
+    origin = origin.Position
+
     local direction = (targetPart.Position - origin).Unit * (targetPart.Position - origin).Magnitude
     local raycastParams = RaycastParams.new()
     raycastParams.FilterDescendantsInstances = {LocalPlayerCharacter, PlayerCharacter}
@@ -158,7 +161,7 @@ local function getClosestPlayer(settings)
     return Closest
 end
 
--- Симуляция Raycast для Silent Aim
+-- Симуляция Raycast для Silent Aim (с позиции персонажа)
 local function simulateRaycast(origin, direction, targetPart)
     local raycastParams = RaycastParams.new()
     raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
@@ -200,8 +203,14 @@ local function setupToolSilentAim(character)
                 return
             end
 
-            local origin = Camera.CFrame.Position
-            local direction = getDirection(origin, closestPart.Position)
+            -- Используем позицию персонажа вместо камеры
+            local localRoot = character:FindFirstChild("HumanoidRootPart")
+            if not localRoot then
+                showNotification("LocalPlayer HumanoidRootPart not found", true)
+                return
+            end
+            local origin = localRoot.Position
+            local direction = (closestPart.Position - origin).Unit * 1000
             local raycastResult = simulateRaycast(origin, direction, closestPart)
             if raycastResult then
                 showNotification("Silent Aim hit: " .. closestPart.Parent.Name, false)
@@ -209,9 +218,30 @@ local function setupToolSilentAim(character)
                 -- Находим RemoteEvent в инструменте
                 local remote = tool:FindFirstChildWhichIsA("RemoteEvent")
                 if remote then
-                    -- Передаём серверу информацию о попадании
+                    -- Пробуем разные варианты вызова RemoteEvent
+                    local hitData = {
+                        Position = closestPart.Position,
+                        Direction = (closestPart.Position - origin).Unit,
+                        TargetPart = closestPart,
+                        CFrame = CFrame.new(origin, closestPart.Position),
+                        Timestamp = tick()
+                    }
+
+                    -- Вариант 1: Позиция и направление
                     remote:FireServer(closestPart.Position, (closestPart.Position - origin).Unit, closestPart)
-                    showNotification("Fired RemoteEvent for hit on " .. closestPart.Parent.Name, false)
+                    showNotification("Fired RemoteEvent (Variant 1) for hit on " .. closestPart.Parent.Name, false)
+
+                    -- Вариант 2: Только позиция
+                    task.delay(0.1, function()
+                        remote:FireServer(closestPart.Position)
+                        showNotification("Fired RemoteEvent (Variant 2) for hit on " .. closestPart.Parent.Name, false)
+                    end)
+
+                    -- Вариант 3: CFrame и часть
+                    task.delay(0.2, function()
+                        remote:FireServer(CFrame.new(origin, closestPart.Position), closestPart)
+                        showNotification("Fired RemoteEvent (Variant 3) for hit on " .. closestPart.Parent.Name, false)
+                    end)
                 else
                     showNotification("No RemoteEvent found in tool", true)
                 end
