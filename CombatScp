@@ -106,15 +106,8 @@ local function getMousePosition()
     return GetMouseLocation(UserInputService)
 end
 
--- Флаг для предотвращения рекурсии в Wall Check
-local isCheckingWall = false
-
 -- Wall Check с Raycast
 local function checkWall(Player, settings)
-    if isCheckingWall then
-        return true
-    end
-
     local PlayerCharacter = Player.Character
     local LocalPlayerCharacter = LocalPlayer.Character
     if not (PlayerCharacter and LocalPlayerCharacter) then return true end
@@ -123,8 +116,6 @@ local function checkWall(Player, settings)
     if not targetPart then targetPart = PlayerCharacter:FindFirstChild("HumanoidRootPart") end
     if not targetPart then return true end
 
-    isCheckingWall = true
-
     local origin = Camera.CFrame.Position
     local direction = (targetPart.Position - origin).Unit * (targetPart.Position - origin).Magnitude
     local raycastParams = RaycastParams.new()
@@ -132,9 +123,6 @@ local function checkWall(Player, settings)
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
 
     local raycastResult = Workspace:Raycast(origin, direction, raycastParams)
-
-    isCheckingWall = false
-
     return raycastResult and raycastResult.Instance ~= nil
 end
 
@@ -170,7 +158,7 @@ local function getClosestPlayer(settings)
     return Closest
 end
 
--- Альтернативная реализация Silent Aim через Tool.Activated
+-- Симуляция Raycast для Silent Aim
 local function simulateRaycast(origin, direction, targetPart)
     local raycastParams = RaycastParams.new()
     raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
@@ -194,7 +182,7 @@ local function simulateRaycast(origin, direction, targetPart)
     }
 end
 
--- Подключение к Tool.Activated
+-- Подключение к Tool.Activated для Silent Aim
 local function setupToolSilentAim(character)
     if not character then return end
 
@@ -217,11 +205,13 @@ local function setupToolSilentAim(character)
             local raycastResult = simulateRaycast(origin, direction, closestPart)
             if raycastResult then
                 showNotification("Silent Aim hit: " .. closestPart.Parent.Name, false)
-                -- В SCP Demonstration нужно найти RemoteEvent для выстрела
+
+                -- Находим RemoteEvent в инструменте
                 local remote = tool:FindFirstChildWhichIsA("RemoteEvent")
                 if remote then
-                    remote:FireServer(closestPart.Position, (closestPart.Position - origin).Unit)
-                    showNotification("Fired RemoteEvent for hit", false)
+                    -- Передаём серверу информацию о попадании
+                    remote:FireServer(closestPart.Position, (closestPart.Position - origin).Unit, closestPart)
+                    showNotification("Fired RemoteEvent for hit on " .. closestPart.Parent.Name, false)
                 else
                     showNotification("No RemoteEvent found in tool", true)
                 end
